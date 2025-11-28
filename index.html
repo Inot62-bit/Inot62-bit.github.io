@@ -3,35 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blutdrucktagebuch</title>
+<title>Blutdruck – Gästeseite</title>
 
 <style>
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background: #f5f7fb;
-    color: #2a3b55;
-}
-
-h1 {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 26px;
-    font-weight: bold;
-}
-
 .table-wrapper {
     overflow-x: auto;
     width: 100%;
-    margin-top: 25px;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 15px;
 }
 
 table {
-    width: 930px;
+    width: 950px;
     border-collapse: collapse;
-    margin: auto;
-    background: white;
+    margin-top: 20px;
+    font-family: Arial;
+    font-size: 17px;
 }
 
 th {
@@ -46,6 +33,7 @@ td {
     border: 1px solid #c5d1df;
     text-align: center;
     background-color: #f8fafc;
+    white-space: pre-line;
 }
 
 tr:nth-child(even) td {
@@ -53,7 +41,7 @@ tr:nth-child(even) td {
 }
 
 button {
-    margin: 7px;
+    margin-top: 10px;
     padding: 10px 18px;
     background-color: #2a3b55;
     color: white;
@@ -67,12 +55,16 @@ button:hover {
 }
 
 .btn-row {
-    text-align: center;
-    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
 }
 
 .bp-chart-container {
-    max-width: 930px;
+    width: 100%;
+    overflow-x: auto;
     margin: 25px auto;
 }
 
@@ -81,9 +73,28 @@ canvas {
     height: auto !important;
 }
 
-/* PDF clean mode */
 @media print {
-    button, canvas, h1 {
+    header, .header, .site-header, .logo, nav, .navbar {
+        display: none !important;
+    }
+
+    h1, h2, h3 {
+        display: none !important;
+    }
+
+    #headerBlock h1 {
+        display: block !important;
+        font-size: 18px !important;
+    }
+
+    #guestNameLine,
+    #guestDobLine {
+        display: block !important;
+        font-size: 12px !important;
+    }
+
+    #bpChart,
+    #headerExplain {
         display: none !important;
     }
 
@@ -93,194 +104,48 @@ canvas {
     }
 
     th, td {
-        padding: 4px !important;
+        padding: 3px !important;
         border: 1px solid #777 !important;
+    }
+
+    .btn-row,
+    #langDE, #langRU {
+        display: none !important;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
     }
 }
 </style>
 </head>
-
 <body>
 
-<h1>Blutdrucktagebuch</h1>
+<div id="guestContent">
+
+<div style="text-align:center; margin-top:15px; font-family:Arial;">
+    <button id="langDE" style="padding:8px 15px; margin-right:10px;">🇩🇪 Deutsch</button>
+    <button id="langRU" style="padding:8px 15px;">🇷🇺 Русский</button>
+</div>
+
+<div id="headerBlock"
+     style="text-align:center; margin-top:20px; font-family:Arial; color:#2a3b55; max-width:90%; margin-left:auto; margin-right:auto;">
+</div>
 
 <div class="bp-chart-container">
     <canvas id="bpChart"></canvas>
 </div>
 
 <div class="table-wrapper">
-<table id="bpTable">
-    <thead>
-        <tr>
-            <th>Datum</th>
-            <th>Uhrzeit</th>
-            <th>Systolisch</th>
-            <th>Diastolisch</th>
-            <th>Puls</th>
-            <th>Notiz</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+    <table id="bpTable">
+        <thead id="tableHead"></thead>
+        <tbody></tbody>
+    </table>
 </div>
 
-<div class="btn-row">
-    <button onclick="addEntry()">Eintrag hinzufügen</button>
-    <button onclick="deleteLast()">Letzten Eintrag löschen</button>
-    <button onclick="clearToday()">Heutige löschen</button>
-    <button onclick="clearAll()">Alles löschen</button>
-    <button onclick="exportCSV()">CSV exportieren</button>
-    <button onclick="window.print()">PDF speichern</button>
-</div>
+<div class="btn-row" id="buttonRow"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-/* Speicherung */
-function saveLocal() {
-    let rows = document.querySelector("#bpTable tbody").rows;
-    let data = [];
-    for (let r of rows) {
-        data.push([
-            r.cells[0].innerText,
-            r.cells[1].innerText,
-            r.cells[2].innerText,
-            r.cells[3].innerText,
-            r.cells[4].innerText,
-            r.cells[5].innerText
-        ]);
-    }
-    localStorage.setItem("bp_data", JSON.stringify(data));
-}
-
-/* Laden */
-function loadLocal() {
-    let saved = localStorage.getItem("bp_data");
-    let body = document.querySelector("#bpTable tbody");
-    body.innerHTML = "";
-    if (!saved) return;
-
-    JSON.parse(saved).forEach(row => {
-        let r = body.insertRow();
-        row.forEach(v => r.insertCell().innerText = v);
-    });
-}
-
-/* Eintrag */
-function addEntry() {
-    let sys = prompt("Systolisch:");
-    if (!sys) return;
-    let dia = prompt("Diastolisch:");
-    if (!dia) return;
-    let pul = prompt("Puls:");
-    if (!pul) return;
-    let note = prompt("Notiz:") || "";
-
-    let now = new Date();
-    let date = now.toLocaleDateString("de-DE");
-    let time = now.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
-
-    let r = document.querySelector("#bpTable tbody").insertRow();
-    r.insertCell().innerText = date;
-    r.insertCell().innerText = time;
-    r.insertCell().innerText = sys;
-    r.insertCell().innerText = dia;
-    r.insertCell().innerText = pul;
-    r.insertCell().innerText = note;
-
-    saveLocal();
-    updateChart();
-}
-
-/* Löschen letzte */
-function deleteLast() {
-    let rows = document.querySelector("#bpTable tbody").rows;
-    if (rows.length === 0) return alert("Keine Einträge.");
-    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
-    saveLocal();
-    updateChart();
-}
-
-/* Löschen heutige */
-function clearToday() {
-    let today = new Date().toLocaleDateString("de-DE");
-    let tbody = document.querySelector("#bpTable tbody");
-    let rows = Array.from(tbody.rows);
-    let removed = false;
-
-    rows.forEach(r => {
-        if (r.cells[0].innerText === today) {
-            tbody.removeChild(r);
-            removed = true;
-        }
-    });
-
-    if (!removed) return alert("Heute keine Einträge.");
-    saveLocal();
-    updateChart();
-}
-
-/* Alles löschen */
-function clearAll() {
-    if (!confirm("Alles löschen?")) return;
-    document.querySelector("#bpTable tbody").innerHTML = "";
-    localStorage.removeItem("bp_data");
-    updateChart();
-}
-
-/* CSV */
-function exportCSV() {
-    let rows = document.querySelectorAll("#bpTable tr");
-    let csv = [];
-    rows.forEach(r => {
-        let cols = [...r.querySelectorAll("th,td")].map(c => c.innerText);
-        csv.push(cols.join(","));
-    });
-
-    let blob = new Blob([csv.join("\n")], {type:"text/csv"});
-    let url = URL.createObjectURL(blob);
-
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "blutdruck.csv";
-    a.click();
-}
-
-/* Chart.js */
-let ctx = document.getElementById('bpChart').getContext('2d');
-let bpChart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: [], datasets: [
-        {label:"SYS",data:[],borderColor:'#ff4136',backgroundColor:'#ff413640',pointRadius:3,tension:0.3},
-        {label:"DIA",data:[],borderColor:'#007bff',backgroundColor:'#007bff40',pointRadius:3,tension:0.3},
-        {label:"PUL",data:[],borderColor:'#ffdc00',backgroundColor:'#ffdc0040',pointRadius:3,tension:0.3}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false}
-});
-
-/* Update Chart */
-function updateChart() {
-    let rows = document.querySelector("#bpTable tbody").rows;
-    let labels=[], sys=[], dia=[], pul=[];
-
-    for (let r of rows) {
-        labels.push(r.cells[0].innerText + " " + r.cells[1].innerText);
-        sys.push(Number(r.cells[2].innerText));
-        dia.push(Number(r.cells[3].innerText));
-        pul.push(Number(r.cells[4].innerText));
-    }
-
-    bpChart.data.labels = labels;
-    bpChart.data.datasets[0].data = sys;
-    bpChart.data.datasets[1].data = dia;
-    bpChart.data.datasets[2].data = pul;
-    bpChart.update();
-}
-
-/* Start */
-loadLocal();
-updateChart();
-</script>
-
-</body>
-</html>
