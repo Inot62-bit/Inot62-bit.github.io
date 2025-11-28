@@ -149,3 +149,253 @@ canvas {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+/* ===== Тексты для DE и RU ===== */
+const LANG = {
+    de: {
+        headerTitle: "Blutdruck – Gästeseite",
+        explain: "Hier können Gäste ihr Blutdrucktagebuch führen.\nDie Daten werden NUR lokal auf diesem Gerät gespeichert.",
+        tableHead: `
+            <tr>
+                <th>Datum</th>
+                <th>Uhrzeit</th>
+                <th>Systolisch</th>
+                <th>Diastolisch</th>
+                <th>Puls</th>
+                <th>Notiz</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="addEntry()">Eintrag hinzufügen</button>
+            <button onclick="deleteLast()">Letzten löschen</button>
+            <button onclick="clearAll()">Alles löschen</button>
+            <button onclick="exportCSV()">CSV exportieren</button>
+            <button onclick="savePDF()">PDF speichern</button>
+        `,
+        prompts: {
+            sys: "Systolischen Wert eingeben:",
+            dia: "Diastolischen Wert eingeben:",
+            pulse: "Puls eingeben:",
+            note: "Notiz eingeben:",
+            deleteConfirm: "Alle Einträge löschen?",
+            deleteError: "Keine Einträge."
+        }
+    },
+
+    ru: {
+        headerTitle: "Дневник артериального давления",
+        explain: "Здесь каждый гость может вести свой дневник давления.\nДанные сохраняются только на этом устройстве.",
+        tableHead: `
+            <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Систолическое</th>
+                <th>Диастолическое</th>
+                <th>Пульс</th>
+                <th>Примечание</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="addEntry()">Добавить запись</button>
+            <button onclick="deleteLast()">Удалить последнюю</button>
+            <button onclick="clearAll()">Удалить всё</button>
+            <button onclick="exportCSV()">Экспорт CSV</button>
+            <button onclick="savePDF()">Сохранить PDF</button>
+        `,
+        prompts: {
+            sys: "Введите систолическое:",
+            dia: "Введите диастолическое:",
+            pulse: "Введите пульс:",
+            note: "Введите примечание:",
+            deleteConfirm: "Удалить все записи?",
+            deleteError: "Нет записей."
+        }
+    }
+};
+
+let currentLang = "de";
+
+/* ===== Применить язык ===== */
+function applyLanguage() {
+    const L = LANG[currentLang];
+
+    document.getElementById("headerBlock").innerHTML = `
+        <h1>${L.headerTitle}</h1>
+        <div id="headerExplain" style="white-space:pre-line; font-size:14px; margin-top:5px;">
+            ${L.explain}
+        </div>
+    `;
+
+    document.getElementById("tableHead").innerHTML = L.tableHead;
+    document.getElementById("buttonRow").innerHTML = L.buttons;
+
+    loadFromLocal();
+    updateChart();
+}
+
+/* ===== Переключатели языка ===== */
+document.getElementById("langDE").onclick = () => {
+    currentLang = "de";
+    applyLanguage();
+};
+
+document.getElementById("langRU").onclick = () => {
+    currentLang = "ru";
+    applyLanguage();
+};
+
+/* ===== Хранение (раздельно для DE/RU) ===== */
+function storageKey() {
+    return currentLang === "de" ? "bp_guest_de" : "bp_guest_ru";
+}
+
+function saveToLocal() {
+    const rows = document.querySelector("#bpTable tbody").rows;
+    const data = [];
+
+    for (let r of rows) {
+        data.push([
+            r.cells[0].innerText,
+            r.cells[1].innerText,
+            r.cells[2].innerText,
+            r.cells[3].innerText,
+            r.cells[4].innerText,
+            r.cells[5].innerText
+        ]);
+    }
+
+    localStorage.setItem(storageKey(), JSON.stringify(data));
+}
+
+function loadFromLocal() {
+    const body = document.querySelector("#bpTable tbody");
+    body.innerHTML = "";
+
+    const saved = localStorage.getItem(storageKey());
+    if (!saved) return;
+
+    JSON.parse(saved).forEach(row => {
+        let r = body.insertRow();
+        row.forEach(cell => r.insertCell().innerText = cell);
+    });
+}
+
+/* ===== Добавить запись ===== */
+function addEntry() {
+    const P = LANG[currentLang].prompts;
+
+    let sys = prompt(P.sys); if (!sys) return;
+    let dia = prompt(P.dia); if (!dia) return;
+    let pul = prompt(P.pulse); if (!pul) return;
+    let note = prompt(P.note) || "";
+
+    const now = new Date();
+    const date = now.toLocaleDateString(currentLang === "de" ? "de-DE" : "ru-RU");
+    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU", {hour: "2-digit", minute: "2-digit"});
+
+    const body = document.querySelector("#bpTable tbody");
+    let r = body.insertRow();
+
+    r.insertCell().innerText = date;
+    r.insertCell().innerText = time;
+    r.insertCell().innerText = sys;
+    r.insertCell().innerText = dia;
+    r.insertCell().innerText = pul;
+    r.insertCell().innerText = note;
+
+    saveToLocal();
+    updateChart();
+}
+
+/* ===== Удалить последнюю ===== */
+function deleteLast() {
+    const rows = document.querySelector("#bpTable tbody").rows;
+    if (!rows.length) {
+        alert(LANG[currentLang].prompts.deleteError);
+        return;
+    }
+
+    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
+    saveToLocal();
+    updateChart();
+}
+
+/* ===== Очистить всё ===== */
+function clearAll() {
+    if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
+    document.querySelector("#bpTable tbody").innerHTML = "";
+    localStorage.removeItem(storageKey());
+    updateChart();
+}
+
+/* ===== CSV ===== */
+function exportCSV() {
+    let rows = document.querySelectorAll("#bpTable tr");
+    let csv = [];
+
+    rows.forEach(r => {
+        let cols = [...r.querySelectorAll("th, td")].map(c => c.innerText);
+        csv.push(cols.join(","));
+    });
+
+    let blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = currentLang === "de" ? "blutdruck.csv" : "davlenie.csv";
+    a.click();
+}
+
+/* ===== PDF ===== */
+function savePDF() {
+    window.print();
+}
+
+/* ===== График ===== */
+let ctx = document.getElementById("bpChart").getContext("2d");
+let chart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [
+            { label: "SYS", borderColor: "#ff3b30", data: [], tension: 0.3 },
+            { label: "DIA", borderColor: "#007aff", data: [], tension: 0.3 },
+            { label: "PUL", borderColor: "#ffcc00", data: [], tension: 0.3 }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+function updateChart() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+
+    let labels = [];
+    let sys = [];
+    let dia = [];
+    let pul = [];
+
+    for (let r of rows) {
+        labels.push(r.cells[0].innerText + " " + r.cells[1].innerText);
+        sys.push(Number(r.cells[2].innerText));
+        dia.push(Number(r.cells[3].innerText));
+        pul.push(Number(r.cells[4].innerText));
+    }
+
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = sys;
+    chart.data.datasets[1].data = dia;
+    chart.data.datasets[2].data = pul;
+
+    chart.update();
+}
+
+/* ===== Запуск ===== */
+applyLanguage();
+updateChart();
+</script>
+
+</body>
+</html>
