@@ -6,35 +6,149 @@
 <title>Blutdruck – Gästeseite</title>
 
 <style>
-.table-wrapper {overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;margin-top:15px;}
-table {width:950px;border-collapse:collapse;margin-top:20px;font-family:Arial;font-size:17px;}
-th {background-color:#e3eaf3;color:#2a3b55;padding:10px;border:1px solid #c5d1df;}
-td {padding:10px;border:1px solid #c5d1df;text-align:center;background-color:#f8fafc;white-space:pre-line;}
-tr:nth-child(even) td {background-color:#f0f4f8;}
-button {margin-top:10px;padding:10px 18px;background-color:#2a3b55;color:white;border:none;border-radius:5px;font-size:15px;}
-.btn-row {display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:15px;}
-.bp-chart-container {width:100%;overflow-x:auto;margin:25px auto;}
-canvas {width:100%!important;height:auto!important;}
-@media print { body{display:none;} }
+/* -------- Общие стили -------- */
+.table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 15px;
+}
+
+table {
+    width: 950px;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-family: Arial;
+    font-size: 17px;
+}
+
+th {
+    background-color: #e3eaf3;
+    color: #2a3b55;
+    padding: 10px;
+    border: 1px solid #c5d1df;
+}
+
+td {
+    padding: 10px;
+    border: 1px solid #c5d1df;
+    text-align: center;
+    background-color: #f8fafc;
+    white-space: pre-line;
+}
+
+tr:nth-child(even) td {
+    background-color: #f0f4f8;
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 18px;
+    background-color: #2a3b55;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 15px;
+}
+
+button:hover {
+    background-color: #1e2c40;
+}
+
+.btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.bp-chart-container {
+    width: 100%;
+    overflow-x: auto;
+    margin: 25px auto;
+}
+
+canvas {
+    width: 100% !important;
+    height: 260px !important;
+}
+
+/* -------- PDF (минимальный режим) -------- */
+@media print {
+
+    header, .header, .site-header, .logo, nav, .navbar,
+    img[alt="logo"], img[src*="logo"] {
+        display: none !important;
+    }
+
+    h1, h2, h3 {
+        display: none !important;
+    }
+
+    #headerBlock h1 {
+        display: block !important;
+        font-size: 18px !important;
+    }
+
+    #guestNameLine,
+    #guestDobLine {
+        display: block !important;
+        font-size: 12px !important;
+    }
+
+    #headerExplain {
+        display: none !important;
+    }
+
+    .bp-chart-container {
+        display: none !important;
+    }
+
+    table {
+        width: 100% !important;
+        font-size: 11px !important;
+    }
+
+    th, td {
+        padding: 3px !important;
+        border: 1px solid #777 !important;
+    }
+
+    .btn-row,
+    #langDE, #langRU {
+        display: none !important;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
 </style>
 </head>
 <body>
 
+<!-- -------- Контент гостевой страницы -------- -->
 <div id="guestContent">
 
+    <!-- Переключатель языка -->
     <div style="text-align:center; margin-top:15px; font-family:Arial;">
-        <button id="langDE">🇩🇪 Deutsch</button>
-        <button id="langRU">🇷🇺 Русский</button>
+        <button id="langDE" style="padding:8px 15px; margin-right:10px;">🇩🇪 Deutsch</button>
+        <button id="langRU" style="padding:8px 15px;">🇷🇺 Русский</button>
     </div>
 
+    <!-- Заголовок + данные гостя -->
     <div id="headerBlock"
          style="text-align:center; margin-top:20px; font-family:Arial; color:#2a3b55; max-width:90%; margin-left:auto; margin-right:auto;">
     </div>
 
+    <!-- График -->
     <div class="bp-chart-container">
         <canvas id="bpChart"></canvas>
     </div>
 
+    <!-- Таблица -->
     <div class="table-wrapper">
         <table id="bpTable">
             <thead id="tableHead"></thead>
@@ -42,334 +156,551 @@ canvas {width:100%!important;height:auto!important;}
         </table>
     </div>
 
+    <!-- Кнопки -->
     <div class="btn-row" id="buttonRow"></div>
 
-</div>
+</div> <!-- /guestContent -->
 
-<!-- ===== Chart.js встроенный ===== -->
+<!-- Chart.js из CDN (работает и в браузере, и в WebView при наличии интернета) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-<script>
-/* ===== Chart.js LITE — специальная мини-версия для Android WebView ===== */
+/* ======================================================
+      БЕЗОПАСНОЕ ХРАНИЛИЩЕ (РАБОТАЕТ, ДАЖЕ ЕСЛИ localStorage ЗАПРЕЩЁН)
+====================================================== */
+const _memoryStore = {};
 
-class SimpleChart {
-    constructor(ctx, config) {
-        this.ctx = ctx;
-        this.type = config.type || "line";
-        this.data = config.data || { labels: [], datasets: [] };
-        this.options = config.options || {};
-        this.draw();
-    }
-
-    update() {
-        this.draw();
-    }
-
-    draw() {
-        const ctx = this.ctx;
-        const w = ctx.canvas.width;
-        const h = ctx.canvas.height;
-
-        ctx.clearRect(0, 0, w, h);
-
-        // фон
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
-
-        if (!this.data.labels.length) return;
-
-        let maxY = 0;
-        let minY = 9999;
-
-        for (let ds of this.data.datasets) {
-            for (let v of ds.data) {
-                if (v > maxY) maxY = v;
-                if (v < minY) minY = v;
-            }
+function safeGetItem(key) {
+    try {
+        if (typeof localStorage !== "undefined") {
+            return localStorage.getItem(key);
         }
-
-        if (minY === maxY) maxY += 1;
-
-        let leftPadding = 40;
-        let bottomPadding = 30;
-
-        let chartW = w - leftPadding - 10;
-        let chartH = h - bottomPadding - 10;
-
-        // оси
-        ctx.strokeStyle = "#444";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(leftPadding, 10);
-        ctx.lineTo(leftPadding, chartH + 10);
-        ctx.lineTo(chartW + leftPadding, chartH + 10);
-        ctx.stroke();
-
-        const count = this.data.labels.length;
-        const stepX = chartW / Math.max(1, count - 1);
-
-        function getY(v) {
-            return (
-                chartH +
-                10 -
-                ((v - minY) / (maxY - minY)) * chartH
-            );
-        }
-
-        // линии
-        for (let ds of this.data.datasets) {
-            ctx.strokeStyle = ds.borderColor || "#000";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-
-            ds.data.forEach((v, i) => {
-                let x = leftPadding + i * stepX;
-                let y = getY(v);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-
-            ctx.stroke();
-
-            // точки
-            ctx.fillStyle = ds.borderColor || "#000";
-            ds.data.forEach((v, i) => {
-                let x = leftPadding + i * stepX;
-                let y = getY(v);
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-    }
+    } catch (e) {}
+    return _memoryStore[key] ?? null;
 }
 
-// Переопределяем глобальный Chart
-window.Chart = SimpleChart;
+function safeSetItem(key, value) {
+    try {
+        if (typeof localStorage !== "undefined") {
+            localStorage.setItem(key, value);
+            return;
+        }
+    } catch (e) {}
+    _memoryStore[key] = value;
+}
 
-</script>
-<script>
-/* ==== ТВОЙ ОСНОВНОЙ JS-КОД, НИЖЕ БЕЗ ИЗМЕНЕНИЙ ==== */
-/* (я не менял твой логический код — только Chart) */
+function safeRemoveItem(key) {
+    try {
+        if (typeof localStorage !== "undefined") {
+            localStorage.removeItem(key);
+            return;
+        }
+    } catch (e) {}
+    delete _memoryStore[key];
+}
 
-/* --- Тексты языков --- */
+/* -------- Тексты DE / RU -------- */
 const LANG = {
-    de:{headerTitle:"",explain:"Jeder Gast kann hier sein eigenes Blutdrucktagebuch führen.\nDie Daten werden NUR lokal gespeichert.",
-    tableHead:`<tr><th>Datum</th><th>Uhrzeit</th><th>Systolisch</th><th>Diastolisch</th><th>Puls</th><th>Anmerkungen</th></tr>`,
-    buttons:`<button onclick="setGuestFirstName()">Vorname eingeben</button>
-<button onclick="setGuestLastName()">Nachname eingeben</button>
-<button onclick="setGuestBirthdate()">Geburtsdatum eingeben</button>
-<button onclick="addEntry()">Eintrag hinzufügen</button>
-<button onclick="deleteLast()">Letzten Eintrag löschen</button>
-<button onclick="clearToday()">Heutige löschen</button>
-<button onclick="clearAll()">Alles löschen</button>
-<button onclick="exportCSV()">CSV exportieren</button>`,
-    prompts:{sys:"Systolischen Wert:",dia:"Diastolischen Wert:",pulse:"Puls:",
-             note:"Notiz:",deleteConfirm:"Alles löschen?",deleteError:"Keine Einträge.",
-             todayEmpty:"Heute keine Einträge.",firstName:"Vorname:",
-             lastName:"Nachname:",birthdate:"Geburtsdatum:"}},
+    de: {
+        headerTitle: "",
+        explain: "Jeder Gast kann hier sein eigenes Blutdrucktagebuch führen.\nDie Daten werden NUR lokal auf diesem Gerät gespeichert.",
+        tableHead: `
+            <tr>
+                <th>Datum</th>
+                <th>Uhrzeit</th>
+                <th>Systolisch</th>
+                <th>Diastolisch</th>
+                <th>Puls</th>
+                <th>Anmerkungen</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="setGuestFirstName()">Vorname eingeben</button>
+            <button onclick="setGuestLastName()">Nachname eingeben</button>
+            <button onclick="setGuestBirthdate()">Geburtsdatum eingeben</button>
+            <button onclick="addEntry()">Eintrag hinzufügen</button>
+            <button onclick="deleteLast()">Letzten Eintrag löschen</button>
+            <button onclick="clearToday()">Heutige löschen</button>
+            <button onclick="clearAll()">Alles löschen</button>
+            <button onclick="exportCSV()">CSV exportieren</button>
+            <button onclick="savePDF()">PDF speichern</button>
+        `,
+        prompts: {
+            sys: "Systolischen Wert eingeben:",
+            dia: "Diastolischen Wert eingeben:",
+            pulse: "Puls eingeben:",
+            note: "Notiz eingeben:",
+            deleteConfirm: "Alle Einträge löschen?",
+            deleteError: "Keine Einträge.",
+            todayEmpty: "Heute keine Einträge.",
+            firstName: "Bitte Vornamen eingeben:",
+            lastName: "Bitte Nachnamen eingeben:",
+            birthdate: "Bitte Geburtsdatum eingeben (z.B. 12.07.1962):"
+        }
+    },
 
-    ru:{headerTitle:"",explain:"Здесь каждый гость может вести свой дневник давления.\nДанные сохраняются только на этом устройстве.",
-    tableHead:`<tr><th>Дата</th><th>Время</th><th>Систолическое</th><th>Диастолическое</th><th>Пульс</th><th>Примечания</th></tr>`,
-    buttons:`<button onclick="setGuestFirstName()">Ввести имя</button>
-<button onclick="setGuestLastName()">Ввести фамилию</button>
-<button onclick="setGuestBirthdate()">Ввести дату рождения</button>
-<button onclick="addEntry()">Добавить запись</button>
-<button onclick="deleteLast()">Удалить последнюю</button>
-<button onclick="clearToday()">Удалить сегодняшние</button>
-<button onclick="clearAll()">Очистить всё</button>
-<button onclick="exportCSV()">Экспорт CSV</button>`,
-    prompts:{sys:"Систолическое:",dia:"Диастолическое:",pulse:"Пульс:",
-             note:"Примечание:",deleteConfirm:"Удалить все записи?",
-             deleteError:"Нет записей.",todayEmpty:"Нет сегодняшних.",
-             firstName:"Имя:",lastName:"Фамилия:",birthdate:"Дата рождения:"}}
+    ru: {
+        headerTitle: "",
+        explain: "Здесь каждый гость может вести свой дневник давления.\nДанные сохраняются ТОЛЬКО на этом устройстве.",
+        tableHead: `
+            <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Систолическое</th>
+                <th>Диастолическое</th>
+                <th>Пульс</th>
+                <th>Примечания</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="setGuestFirstName()">Ввести имя</button>
+            <button onclick="setGuestLastName()">Ввести фамилию</button>
+            <button onclick="setGuestBirthdate()">Ввести дату рождения</button>
+            <button onclick="addEntry()">Добавить запись</button>
+            <button onclick="deleteLast()">Удалить последнюю</button>
+            <button onclick="clearToday()">Удалить сегодняшние</button>
+            <button onclick="clearAll()">Очистить всё</button>
+            <button onclick="exportCSV()">Экспорт CSV</button>
+            <button onclick="savePDF()">Сохранить PDF</button>
+        `,
+        prompts: {
+            sys: "Введите систолическое:",
+            dia: "Введите диастолическое:",
+            pulse: "Введите пульс:",
+            note: "Введите примечание:",
+            deleteConfirm: "Удалить все записи?",
+            deleteError: "Нет записей.",
+            todayEmpty: "Сегодняшних записей нет.",
+            firstName: "Введите имя:",
+            lastName: "Введите фамилию:",
+            birthdate: "Введите дату рождения (например, 12.07.1962):"
+        }
+    }
 };
 
-let currentLang="de";
+let currentLang = "de";
 
-function getKey(k){ return k+"_"+currentLang }
+/* ======================================================
+        ХРАНИЛИЩЕ ДАННЫХ — РАЗДЕЛЬНО ПО ЯЗЫКУ
+====================================================== */
 
-/* ==== Языки ==== */
-function applyLanguage(){
-    const L=LANG[currentLang];
+function getStorageKey() {
+    return currentLang === "de" ? "guest_bp_data_de" : "guest_bp_data_ru";
+}
 
-    const first=localStorage.getItem(getKey("fname"))||"";
-    const last =localStorage.getItem(getKey("lname"))||"";
-    const dob  =localStorage.getItem(getKey("dob"))||"";
-    const full=(first+" "+last).trim();
+function getNameKey() {
+    return currentLang === "de" ? "guest_firstname_de" : "guest_firstname_ru";
+}
 
-    document.getElementById("headerBlock").innerHTML=
-`<h1 style="margin:0;font-size:26px;font-weight:bold;">
-${full? (currentLang==="de"?"Blutdrucktagebuch – ":"Дневник – ")+full :
-        (currentLang==="de"?"Blutdrucktagebuch":"Дневник артериального давления")}
-</h1>
-${full?`<div style="font-size:15px;">${full}</div>`:""}
-${dob?`<div style="font-size:13px;">${currentLang==="de"?"Geboren am: ":"Дата рождения: "} ${dob}</div>`:""}
-<div style="font-size:13px;white-space:pre-line;color:#56657c;margin-top:6px;">${L.explain}</div>`;
+function getLastKey() {
+    return currentLang === "de" ? "guest_lastname_de" : "guest_lastname_ru";
+}
 
-    document.getElementById("tableHead").innerHTML=L.tableHead;
-    document.getElementById("buttonRow").innerHTML=L.buttons;
+function getBirthKey() {
+    return currentLang === "de" ? "guest_birthdate_de" : "guest_birthdate_ru";
+}
 
+/* ======================================================
+        ПРИМЕНЕНИЕ ЯЗЫКА + ЗАГРУЗКА ПРОФИЛЯ
+====================================================== */
+
+function applyLanguage() {
+    const L = LANG[currentLang];
+
+    /* Прочитать имя/фамилию/дату рождения из правильного ключа */
+    const first = safeGetItem(getNameKey()) || "";
+    const last  = safeGetItem(getLastKey()) || "";
+    const dob   = safeGetItem(getBirthKey()) || "";
+
+    const fullName = (first + " " + last).trim();
+
+    /* Дата рождения */
+    let dobLine = "";
+    if (dob) {
+        dobLine = currentLang === "de"
+            ? `<div id="guestDobLine" style="font-size:13px; margin-top:2px;">Geboren am: ${dob}</div>`
+            : `<div id="guestDobLine" style="font-size:13px; margin-top:2px;">Дата рождения: ${dob}</div>`;
+    }
+
+    /* Заголовок */
+    let titleText = "";
+
+    if (fullName) {
+        titleText = currentLang === "de"
+            ? `Blutdrucktagebuch – ${fullName}`
+            : `Дневник артериального давления – ${fullName}`;
+    } else {
+        titleText = currentLang === "de"
+            ? "Blutdrucktagebuch"
+            : "Дневник артериального давления";
+    }
+
+    /* Информационный текст */
+    const explainHtml = `
+        <div id="headerExplain"
+             style="font-size:13px; margin-top:6px; color:#56657c; white-space:pre-line;">
+            ${L.explain}
+        </div>
+    `;
+
+    /* Обновить HTML шапки */
+    document.getElementById("headerBlock").innerHTML = `
+        <h1 style="margin:0; font-size:26px; font-weight:bold;">${titleText}</h1>
+        ${fullName ? `<div id="guestNameLine" style="font-size:15px;">${fullName}</div>` : ""}
+        ${dobLine}
+        ${explainHtml}
+    `;
+
+    /* Обновить таблицу */
+    document.getElementById("tableHead").innerHTML = L.tableHead;
+
+    /* Обновить кнопки */
+    document.getElementById("buttonRow").innerHTML = L.buttons;
+
+    /* Загрузить записи ТОЛЬКО текущего языка */
     loadFromLocal();
+
+    /* Обновить график */
     updateChart();
 }
 
-/* ==== Имя ==== */
-function setGuestFirstName(){
-    let v=prompt(LANG[currentLang].prompts.firstName);
-    if(v){ localStorage.setItem(getKey("fname"),v); applyLanguage(); }
-}
-function setGuestLastName(){
-    let v=prompt(LANG[currentLang].prompts.lastName);
-    if(v){ localStorage.setItem(getKey("lname"),v); applyLanguage(); }
-}
-function setGuestBirthdate(){
-    let v=prompt(LANG[currentLang].prompts.birthdate);
-    if(v){ localStorage.setItem(getKey("dob"),v); applyLanguage(); }
-}
+/* ======================================================
+        Переключение языка
+====================================================== */
 
-/* ==== Таблица ==== */
-function addEntry(){
-    const P=LANG[currentLang].prompts;
-    let s=prompt(P.sys); if(!s) return;
-    let d=prompt(P.dia); if(!d) return;
-    let p=prompt(P.pulse); if(!p) return;
-    let n=prompt(P.note)||"";
+document.getElementById("langDE").onclick = () => {
+    currentLang = "de";
+    applyLanguage();
+};
 
-    let now=new Date();
-    let date=now.toLocaleDateString(currentLang==="de"?"de-DE":"ru-RU");
-    let time=now.toLocaleTimeString(currentLang==="de"?"de-DE":"ru-RU",{hour:"2-digit",minute:"2-digit"});
+document.getElementById("langRU").onclick = () => {
+    currentLang = "ru";
+    applyLanguage();
+};
 
-    let tbody=document.querySelector("#bpTable tbody");
-    let r=tbody.insertRow();
+/* ======================================================
+          Сохранение данных
+====================================================== */
 
-    r.insertCell().innerText=date;
-    r.insertCell().innerText=time;
-    r.insertCell().innerText=s;
-    r.insertCell().innerText=d;
-    r.insertCell().innerText=p;
-    r.insertCell().innerText=n;
+function saveToLocal() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+    let data = [];
 
-    saveToLocal();
-    updateChart();
-}
-
-function deleteLast(){
-    let rows=document.querySelector("#bpTable tbody").rows;
-    if(rows.length===0){ alert(LANG[currentLang].prompts.deleteError); return; }
-    document.querySelector("#bpTable tbody").deleteRow(rows.length-1);
-    saveToLocal();
-    updateChart();
-}
-
-function clearToday(){
-    const P=LANG[currentLang].prompts;
-    let today=new Date().toLocaleDateString(currentLang==="de"?"de-DE":"ru-RU");
-    let tbody=document.querySelector("#bpTable tbody");
-    let rows=Array.from(tbody.rows);
-    let removed=false;
-
-    rows.forEach(r=>{
-        if(r.cells[0].innerText===today){ tbody.removeChild(r); removed=true; }
-    });
-
-    if(!removed) alert(P.todayEmpty);
-    saveToLocal();
-    updateChart();
-}
-
-function clearAll(){
-    if(!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
-    document.querySelector("#bpTable tbody").innerHTML="";
-    localStorage.removeItem(getKey("data"));
-    updateChart();
-}
-
-/* ==== LocalStorage ==== */
-function saveToLocal(){
-    let rows=document.querySelector("#bpTable tbody").rows;
-    let arr=[];
-    for(let r of rows){
-        arr.push([
-            r.cells[0].innerText,
-            r.cells[1].innerText,
-            r.cells[2].innerText,
-            r.cells[3].innerText,
-            r.cells[4].innerText,
-            r.cells[5].innerText
+    for (let r of rows) {
+        data.push([
+            r.cells[0].innerText, // дата
+            r.cells[1].innerText, // время
+            r.cells[2].innerText, // систолическое
+            r.cells[3].innerText, // диастолическое
+            r.cells[4].innerText, // пульс
+            r.cells[5].innerText  // примечания
         ]);
     }
-    localStorage.setItem(getKey("data"),JSON.stringify(arr));
+
+    safeSetItem(getStorageKey(), JSON.stringify(data));
 }
 
-function loadFromLocal(){
-    let saved=localStorage.getItem(getKey("data"));
-    let tbody=document.querySelector("#bpTable tbody");
-    tbody.innerHTML="";
-    if(!saved) return;
-    JSON.parse(saved).forEach(a=>{
-        let r=tbody.insertRow();
-        a.forEach(v=>r.insertCell().innerText=v);
+/* ======================================================
+          Загрузка данных
+====================================================== */
+
+function loadFromLocal() {
+    let saved = safeGetItem(getStorageKey());
+    let body = document.querySelector("#bpTable tbody");
+
+    body.innerHTML = ""; // Очистить таблицу перед загрузкой
+
+    if (!saved) return;
+
+    JSON.parse(saved).forEach(row => {
+        let r = body.insertRow();
+        for (let i = 0; i < row.length; i++) {
+            r.insertCell(i).innerText = row[i];
+        }
     });
 }
 
-/* ==== CSV ==== */
-function exportCSV(){
-    let rows=document.querySelectorAll("#bpTable tr");
-    let csv=[];
-    rows.forEach(row=>{
-        let cols=row.querySelectorAll("th,td");
-        let vals=[];
-        cols.forEach(c=>vals.push(c.innerText));
-        csv.push(vals.join(","));
+/* ======================================================
+          Ввод имени/фамилии/даты
+====================================================== */
+
+function setGuestFirstName() {
+    let v = prompt(LANG[currentLang].prompts.firstName);
+    if (v === null) return;
+    safeSetItem(getNameKey(), v.trim());
+    applyLanguage();
+}
+
+function setGuestLastName() {
+    let v = prompt(LANG[currentLang].prompts.lastName);
+    if (v === null) return;
+    safeSetItem(getLastKey(), v.trim());
+    applyLanguage();
+}
+
+function setGuestBirthdate() {
+    let v = prompt(LANG[currentLang].prompts.birthdate);
+    if (v === null) return;
+    safeSetItem(getBirthKey(), v.trim());
+    applyLanguage();
+}
+
+/* ======================================================
+          ДОБАВЛЕНИЕ ЗАПИСИ
+====================================================== */
+
+function addEntry() {
+    const P = LANG[currentLang].prompts;
+
+    let sys  = prompt(P.sys);   if (!sys) return;
+    let dia  = prompt(P.dia);   if (!dia) return;
+    let pul  = prompt(P.pulse); if (!pul) return;
+
+    let note = prompt(P.note) || ""; // Новая колонка «Примечания»
+
+    let now = new Date();
+
+    let date = now.toLocaleDateString(
+        currentLang === "de" ? "de-DE" : "ru-RU"
+    );
+
+    let time = now.toLocaleTimeString(
+        currentLang === "de" ? "de-DE" : "ru-RU",
+        { hour: "2-digit", minute: "2-digit" }
+    );
+
+    let body = document.querySelector("#bpTable tbody");
+    let r = body.insertRow();
+
+    r.insertCell(0).innerText = date;
+    r.insertCell(1).innerText = time;
+    r.insertCell(2).innerText = sys;
+    r.insertCell(3).innerText = dia;
+    r.insertCell(4).innerText = pul;
+    r.insertCell(5).innerText = note;
+
+    saveToLocal();
+    updateChart();
+}
+
+/* ======================================================
+          Удалить последнюю запись
+====================================================== */
+
+function deleteLast() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+
+    if (rows.length === 0) {
+        alert(LANG[currentLang].prompts.deleteError);
+        return;
+    }
+
+    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
+    saveToLocal();
+    updateChart();
+}
+
+/* ======================================================
+          Удалить сегодняшние записи
+====================================================== */
+
+function clearToday() {
+    const P = LANG[currentLang].prompts;
+
+    let today = new Date().toLocaleDateString(
+        currentLang === "de" ? "de-DE" : "ru-RU"
+    );
+
+    let tbody = document.querySelector("#bpTable tbody");
+    let rows  = Array.from(tbody.rows);
+
+    let removed = false;
+
+    rows.forEach(r => {
+        if (r.cells[0].innerText === today) {
+            tbody.removeChild(r);
+            removed = true;
+        }
     });
-    let blob=new Blob([csv.join("\n")],{type:"text/csv"});
-    let url=URL.createObjectURL(blob);
-    let a=document.createElement("a");
-    a.href=url;
-    a.download=currentLang==="de"?"blutdruck_de.csv":"blutdruck_ru.csv";
+
+    if (!removed) {
+        alert(P.todayEmpty);
+        return;
+    }
+
+    saveToLocal();
+    updateChart();
+}
+
+/* ======================================================
+          Удалить всё (для текущего языка)
+====================================================== */
+
+function clearAll() {
+    if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
+
+    document.querySelector("#bpTable tbody").innerHTML = "";
+
+    safeRemoveItem(getStorageKey());      // удалить дневник
+    // Имя и дата НЕ удаляются
+
+    updateChart();
+}
+
+/* ======================================================
+          Экспорт CSV
+====================================================== */
+
+function exportCSV() {
+    let rows = document.querySelectorAll("#bpTable tr");
+    let csv = [];
+
+    for (let row of rows) {
+        let cols = row.querySelectorAll("th, td");
+        let rowData = [];
+        cols.forEach(col => rowData.push(col.innerText));
+        csv.push(rowData.join(","));
+    }
+
+    let blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = currentLang === "de"
+        ? "blutdruck_de.csv"
+        : "blutdruck_ru.csv";
+
     a.click();
 }
 
-/* ==== График ==== */
-let ctx=document.getElementById("bpChart").getContext("2d");
+/* ======================================================
+          PDF (минимальный)
+====================================================== */
 
-let bpChart=new Chart(ctx,{
-    type:"line",
-    data:{
-        labels:[],
-        datasets:[
-            {label:"SYS",data:[],borderColor:"#ff4136"},
-            {label:"DIA",data:[],borderColor:"#007bff"},
-            {label:"PUL",data:[],borderColor:"#ffdc00"}
+function savePDF() {
+    window.print();
+}
+
+/* ======================================================
+          Плагин цветных зон (фон графика)
+====================================================== */
+const bpBackground = {
+    id: 'bpBackground',
+    beforeDraw(chart) {
+        const {ctx, chartArea:{left, right}, scales:{y}} = chart;
+
+        if (!y) return;
+
+        // Зелёная зона — нормальное давление
+        ctx.fillStyle = 'rgba(120, 200, 120, 0.15)';
+        ctx.fillRect(left, y.getPixelForValue(80), right-left, y.getPixelForValue(0)-y.getPixelForValue(80));
+
+        // Жёлтая зона — слегка повышенное
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.18)';
+        ctx.fillRect(left, y.getPixelForValue(90), right-left, y.getPixelForValue(80)-y.getPixelForValue(90));
+
+        // Красная зона — высокое давление
+        ctx.fillStyle = 'rgba(255, 99, 132, 0.18)';
+        ctx.fillRect(left, y.getPixelForValue(200), right-left, y.getPixelForValue(90)-y.getPixelForValue(200));
+    }
+};
+
+/* ======================================================
+          График Chart.js
+====================================================== */
+let ctx = document.getElementById('bpChart').getContext('2d');
+
+let bpChart = new Chart(ctx, {
+    type: 'line',
+    plugins: [bpBackground],
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: "SYS",
+                data: [],
+                borderColor: '#ff4136',
+                backgroundColor: '#ff413640',
+                pointRadius: 3,
+                tension: 0.3
+            },
+            {
+                label: "DIA",
+                data: [],
+                borderColor: '#007bff',
+                backgroundColor: '#007bff40',
+                pointRadius: 3,
+                tension: 0.3
+            },
+            {
+                label: "PUL",
+                data: [],
+                borderColor: '#ffdc00',
+                backgroundColor: '#ffdc0040',
+                pointRadius: 3,
+                tension: 0.3
+            }
         ]
     },
-    options:{}
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                suggestedMin: 50,
+                suggestedMax: 200
+            }
+        }
+    }
 });
 
-function updateChart(){
-    let rows=document.querySelector("#bpTable tbody").rows;
+/* ======================================================
+          Обновление графика
+====================================================== */
+function updateChart() {
+    let rows = document.querySelector("#bpTable tbody").rows;
 
-    let labels=[],sys=[],dia=[],pul=[];
-    for(let r of rows){
-        labels.push(r.cells[0].innerText+" "+r.cells[1].innerText);
+    let labels = [];
+    let sys = [];
+    let dia = [];
+    let pul = [];
+
+    for (let r of rows) {
+        labels.push(r.cells[0].innerText + " " + r.cells[1].innerText);
         sys.push(Number(r.cells[2].innerText));
         dia.push(Number(r.cells[3].innerText));
         pul.push(Number(r.cells[4].innerText));
     }
 
-    bpChart.data.labels=labels;
-    bpChart.data.datasets[0].data=sys;
-    bpChart.data.datasets[1].data=dia;
-    bpChart.data.datasets[2].data=pul;
+    bpChart.data.labels = labels;
+    bpChart.data.datasets[0].data = sys;
+    bpChart.data.datasets[1].data = dia;
+    bpChart.data.datasets[2].data = pul;
+
+    bpChart.data.datasets[0].label =
+        currentLang === "de" ? "Systolisch" : "Систолическое";
+
+    bpChart.data.datasets[1].label =
+        currentLang === "de" ? "Diastolisch" : "Диастолическое";
+
+    bpChart.data.datasets[2].label =
+        currentLang === "de" ? "Puls" : "Пульс";
 
     bpChart.update();
 }
 
-/* ==== Старт ==== */
-applyLanguage();
-document.getElementById("langDE").onclick=()=>{ currentLang="de"; applyLanguage(); };
-document.getElementById("langRU").onclick=()=>{ currentLang="ru"; applyLanguage(); };
+/* ======================================================
+          ЗАПУСК ПРИ ОТКРЫТИИ
+====================================================== */
 
+try {
+    applyLanguage();
+    loadFromLocal();
+    updateChart();
+} catch (e) {
+    console.log("Init error:", e);
+}
 </script>
 
 </body>
