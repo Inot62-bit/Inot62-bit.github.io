@@ -149,3 +149,242 @@ canvas {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+/* ===== Тексты для DE и RU ===== */
+const LANG = {
+    de: {
+        headerTitle: "Blutdruck – Gästeseite",
+        explain: "Hier können Gäste ihr Blutdrucktagebuch führen.\nDie Daten werden nur lokal gespeichert.",
+        tableHead: `
+            <tr>
+                <th>Datum</th>
+                <th>Uhrzeit</th>
+                <th>Systolisch</th>
+                <th>Diastolisch</th>
+                <th>Puls</th>
+                <th>Notiz</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="setFirstName()">Vorname</button>
+            <button onclick="setLastName()">Nachname</button>
+            <button onclick="setBirthdate()">Geburtsdatum</button>
+            <button onclick="addEntry()">Eintrag hinzufügen</button>
+            <button onclick="deleteLast()">Letzten löschen</button>
+            <button onclick="clearAll()">Alles löschen</button>
+            <button onclick="exportCSV()">CSV exportieren</button>
+            <button onclick="savePDF()">PDF speichern</button>
+        `,
+        prompts: {
+            first: "Vorname eingeben:",
+            last: "Nachname eingeben:",
+            birth: "Geburtsdatum eingeben (z.B. 12.07.1965):",
+            sys: "Systolisch:",
+            dia: "Diastolisch:",
+            pulse: "Puls:",
+            note: "Notiz:",
+            deleteConfirm: "Alle Einträge löschen?",
+            deleteError: "Keine Einträge."
+        }
+    },
+
+    ru: {
+        headerTitle: "Дневник артериального давления",
+        explain: "Здесь каждый гость может вести свой дневник. Данные хранятся только на этом устройстве.",
+        tableHead: `
+            <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Систолическое</th>
+                <th>Диастолическое</th>
+                <th>Пульс</th>
+                <th>Примечание</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="setFirstName()">Имя</button>
+            <button onclick="setLastName()">Фамилия</button>
+            <button onclick="setBirthdate()">Дата рождения</button>
+            <button onclick="addEntry()">Добавить запись</button>
+            <button onclick="deleteLast()">Удалить последнюю</button>
+            <button onclick="clearAll()">Удалить всё</button>
+            <button onclick="exportCSV()">Экспорт CSV</button>
+            <button onclick="savePDF()">Сохранить PDF</button>
+        `,
+        prompts: {
+            first: "Введите имя:",
+            last: "Введите фамилию:",
+            birth: "Введите дату рождения (например, 12.07.1965):",
+            sys: "Систолическое:",
+            dia: "Диастолическое:",
+            pulse: "Пульс:",
+            note: "Примечание:",
+            deleteConfirm: "Удалить все записи?",
+            deleteError: "Нет записей."
+        }
+    }
+};
+
+let currentLang = "de";
+
+/* ===== Ключи хранения (DE и RU отдельно) ===== */
+function keyData() { return "bp_data_" + currentLang; }
+function keyFirst() { return "bp_first_" + currentLang; }
+function keyLast()  { return "bp_last_"  + currentLang; }
+function keyBirth() { return "bp_birth_" + currentLang; }
+
+/* ===== Применить язык ===== */
+function applyLanguage() {
+    const L = LANG[currentLang];
+
+    const first = localStorage.getItem(keyFirst()) || "";
+    const last  = localStorage.getItem(keyLast())  || "";
+    const birth = localStorage.getItem(keyBirth()) || "";
+
+    document.getElementById("headerBlock").innerHTML = `
+        <h1>${L.headerTitle}</h1>
+        <div style="font-size:17px; margin-top:5px;">
+            ${first} ${last}
+        </div>
+        <div style="font-size:14px; margin-top:3px;">
+            ${birth ? (currentLang === "de" ? "Geboren am: " : "Дата рождения: ") + birth : ""}
+        </div>
+        <div id="headerExplain"
+             style="white-space:pre-line; font-size:13px; margin-top:7px;">
+            ${L.explain}
+        </div>
+    `;
+
+    document.getElementById("tableHead").innerHTML = L.tableHead;
+    document.getElementById("buttonRow").innerHTML = L.buttons;
+
+    loadData();
+}
+
+/* ===== Переключатели ===== */
+document.getElementById("langDE").onclick = () => { currentLang = "de"; applyLanguage(); };
+document.getElementById("langRU").onclick = () => { currentLang = "ru"; applyLanguage(); };
+
+/* ===== Имя, фамилия, дата ===== */
+function setFirstName() {
+    const v = prompt(LANG[currentLang].prompts.first);
+    if (v !== null) localStorage.setItem(keyFirst(), v.trim());
+    applyLanguage();
+}
+
+function setLastName() {
+    const v = prompt(LANG[currentLang].prompts.last);
+    if (v !== null) localStorage.setItem(keyLast(), v.trim());
+    applyLanguage();
+}
+
+function setBirthdate() {
+    const v = prompt(LANG[currentLang].prompts.birth);
+    if (v !== null) localStorage.setItem(keyBirth(), v.trim());
+    applyLanguage();
+}
+
+/* ===== Сохранение таблицы ===== */
+function saveData() {
+    const rows = document.querySelector("#bpTable tbody").rows;
+    let arr = [];
+
+    for (let r of rows) {
+        arr.push([
+            r.cells[0].innerText,
+            r.cells[1].innerText,
+            r.cells[2].innerText,
+            r.cells[3].innerText,
+            r.cells[4].innerText,
+            r.cells[5].innerText
+        ]);
+    }
+
+    localStorage.setItem(keyData(), JSON.stringify(arr));
+}
+
+/* ===== Загрузка ===== */
+function loadData() {
+    const saved = localStorage.getItem(keyData());
+    const body = document.querySelector("#bpTable tbody");
+
+    body.innerHTML = "";
+    if (!saved) return;
+
+    JSON.parse(saved).forEach(row => {
+        let r = body.insertRow();
+        row.forEach(v => r.insertCell().innerText = v);
+    });
+}
+
+/* ===== Добавить запись ===== */
+function addEntry() {
+    const P = LANG[currentLang].prompts;
+
+    let sys = prompt(P.sys); if (!sys) return;
+    let dia = prompt(P.dia); if (!dia) return;
+    let pul = prompt(P.pulse); if (!pul) return;
+    let note = prompt(P.note) || "";
+
+    const now = new Date();
+    const date = now.toLocaleDateString(currentLang === "de" ? "de-DE" : "ru-RU");
+    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU",
+                                        {hour: "2-digit", minute: "2-digit"});
+
+    const body = document.querySelector("#bpTable tbody");
+
+    let r = body.insertRow();
+    r.insertCell().innerText = date;
+    r.insertCell().innerText = time;
+    r.insertCell().innerText = sys;
+    r.insertCell().innerText = dia;
+    r.insertCell().innerText = pul;
+    r.insertCell().innerText = note;
+
+    saveData();
+}
+
+/* ===== Удалить последнюю ===== */
+function deleteLast() {
+    const P = LANG[currentLang].prompts;
+    const rows = document.querySelector("#bpTable tbody").rows;
+
+    if (!rows.length) return alert(P.deleteError);
+
+    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
+    saveData();
+}
+
+/* ===== Удалить всё ===== */
+function clearAll() {
+    if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
+    document.querySelector("#bpTable tbody").innerHTML = "";
+    localStorage.removeItem(keyData());
+}
+
+/* ===== CSV ===== */
+function exportCSV() {
+    let rows = document.querySelectorAll("#bpTable tr");
+    let csv = [];
+
+    rows.forEach(r => {
+        let cols = [...r.querySelectorAll("th, td")].map(c => c.innerText);
+        csv.push(cols.join(","));
+    });
+
+    let blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = currentLang === "de" ? "blutdruck.csv" : "davlenie.csv";
+    a.click();
+}
+
+/* ===== PDF ===== */
+function savePDF() {
+    window.print();
+}
+
+/* ===== Старт ===== */
+applyLanguage();
+loadData();
