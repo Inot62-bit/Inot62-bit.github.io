@@ -188,3 +188,385 @@ const LANG = {
             birthdate: "Bitte Geburtsdatum eingeben (z.B. 12.07.1962):"
         }
     },
+    ru: {
+        headerTitle: "",
+        explain: "Здесь каждый гость может вести свой дневник давления.\nДанные сохраняются ТОЛЬКО на этом устройстве.",
+        tableHead: `
+            <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Систолическое</th>
+                <th>Диастолическое</th>
+                <th>Пульс</th>
+                <th>Примечания</th>
+            </tr>
+        `,
+        buttons: `
+            <button onclick="setGuestFirstName()">Ввести имя</button>
+            <button onclick="setGuestLastName()">Ввести фамилию</button>
+            <button onclick="setGuestBirthdate()">Ввести дату рождения</button>
+            <button onclick="addEntry()">Добавить запись</button>
+            <button onclick="deleteLast()">Удалить последнюю</button>
+            <button onclick="clearToday()">Удалить сегодняшние</button>
+            <button onclick="clearAll()">Очистить всё</button>
+            <button onclick="exportCSV()">Экспорт CSV</button>
+            <button onclick="savePDF()">Сохранить PDF</button>
+        `,
+        prompts: {
+            sys: "Введите систолическое:",
+            dia: "Введите диастолическое:",
+            pulse: "Введите пульс:",
+            note: "Введите примечание:",
+            deleteConfirm: "Удалить все записи?",
+            deleteError: "Нет записей.",
+            todayEmpty: "Сегодняшних записей нет.",
+            firstName: "Введите имя:",
+            lastName: "Введите фамилию:",
+            birthdate: "Введите дату рождения (например, 12.07.1962):"
+        }
+    }
+};
+
+let currentLang = "de";
+
+/* ------------------ Ключи хранения ------------------ */
+function getStorageKey() {
+    return currentLang === "de" ? "guest_bp_data_de" : "guest_bp_data_ru";
+}
+function getNameKey() {
+    return currentLang === "de" ? "guest_firstname_de" : "guest_firstname_ru";
+}
+function getLastKey() {
+    return currentLang === "de" ? "guest_lastname_de" : "guest_lastname_ru";
+}
+function getBirthKey() {
+    return currentLang === "de" ? "guest_birthdate_de" : "guest_birthdate_ru";
+}
+
+/* ------------------ Язык ------------------ */
+function applyLanguage() {
+    const L = LANG[currentLang];
+
+    const first = localStorage.getItem(getNameKey()) || "";
+    const last  = localStorage.getItem(getLastKey()) || "";
+    const dob   = localStorage.getItem(getBirthKey()) || "";
+
+    const fullName = (first + " " + last).trim();
+
+    let dobLine = "";
+    if (dob) {
+        dobLine = currentLang === "de"
+            ? `<div id="guestDobLine" style="font-size:13px;">Geboren am: ${dob}</div>`
+            : `<div id="guestDobLine" style="font-size:13px;">Дата рождения: ${dob}</div>`;
+    }
+
+    let titleText = fullName
+        ? (currentLang === "de"
+            ? `Blutdrucktagebuch – ${fullName}`
+            : `Дневник артериального давления – ${fullName}`)
+        : (currentLang === "de"
+            ? "Blutdrucktagebuch"
+            : "Дневник артериального давления");
+
+    const explainHtml = `
+        <div id="headerExplain" style="font-size:13px; color:#56657c; white-space:pre-line;">
+            ${L.explain}
+        </div>
+    `;
+
+    document.getElementById("headerBlock").innerHTML = `
+        <h1 style="margin:0; font-size:26px;">${titleText}</h1>
+        ${fullName ? `<div id="guestNameLine" style="font-size:15px;">${fullName}</div>` : ""}
+        ${dobLine}
+        ${explainHtml}
+    `;
+
+    document.getElementById("tableHead").innerHTML = L.tableHead;
+    document.getElementById("buttonRow").innerHTML = L.buttons;
+
+    loadFromLocal();
+    updateChart();
+}
+
+document.getElementById("langDE").onclick = () => {
+    currentLang = "de";
+    applyLanguage();
+};
+document.getElementById("langRU").onclick = () => {
+    currentLang = "ru";
+    applyLanguage();
+};
+
+/* ------------------ Сохранение данных ------------------ */
+function saveToLocal() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+    let data = [];
+
+    for (let r of rows) {
+        data.push([
+            r.cells[0].innerText,
+            r.cells[1].innerText,
+            r.cells[2].innerText,
+            r.cells[3].innerText,
+            r.cells[4].innerText,
+            r.cells[5].innerText
+        ]);
+    }
+
+    localStorage.setItem(getStorageKey(), JSON.stringify(data));
+}
+
+/* ------------------ Загрузка ------------------ */
+function loadFromLocal() {
+    let saved = localStorage.getItem(getStorageKey());
+    let body = document.querySelector("#bpTable tbody");
+    body.innerHTML = "";
+
+    if (!saved) return;
+
+    JSON.parse(saved).forEach(row => {
+        let r = body.insertRow();
+        for (let i = 0; i < row.length; i++) {
+            r.insertCell(i).innerText = row[i];
+        }
+    });
+}
+
+/* ------------------ Имя / фамилия / ДР ------------------ */
+function setGuestFirstName() {
+    let v = prompt(LANG[currentLang].prompts.firstName);
+    if (v === null) return;
+    localStorage.setItem(getNameKey(), v.trim());
+    applyLanguage();
+}
+
+function setGuestLastName() {
+    let v = prompt(LANG[currentLang].prompts.lastName);
+    if (v === null) return;
+    localStorage.setItem(getLastKey(), v.trim());
+    applyLanguage();
+}
+
+function setGuestBirthdate() {
+    let v = prompt(LANG[currentLang].prompts.birthdate);
+    if (v === null) return;
+    localStorage.setItem(getBirthKey(), v.trim());
+    applyLanguage();
+}
+
+/* ------------------ Добавить запись ------------------ */
+function addEntry() {
+    const P = LANG[currentLang].prompts;
+
+    let sys  = prompt(P.sys);   if (!sys) return;
+    let dia  = prompt(P.dia);   if (!dia) return;
+    let pul  = prompt(P.pulse); if (!pul) return;
+    let note = prompt(P.note) || "";
+
+    let now = new Date();
+
+    let date = now.toLocaleDateString(
+        currentLang === "de" ? "de-DE" : "ru-RU"
+    );
+    let time = now.toLocaleTimeString(
+        currentLang === "de" ? "de-DE" : "ru-RU",
+        { hour: "2-digit", minute: "2-digit" }
+    );
+
+    let body = document.querySelector("#bpTable tbody");
+    let r = body.insertRow();
+
+    r.insertCell(0).innerText = date;
+    r.insertCell(1).innerText = time;
+    r.insertCell(2).innerText = sys;
+    r.insertCell(3).innerText = dia;
+    r.insertCell(4).innerText = pul;
+    r.insertCell(5).innerText = note;
+
+    saveToLocal();
+    updateChart();
+}
+
+/* ------------------ Удалить последнюю ------------------ */
+function deleteLast() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+
+    if (rows.length === 0) {
+        alert(LANG[currentLang].prompts.deleteError);
+        return;
+    }
+
+    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
+    saveToLocal();
+    updateChart();
+}
+
+/* ------------------ Удалить сегодняшние ------------------ */
+function clearToday() {
+    const P = LANG[currentLang].prompts;
+    let today = new Date().toLocaleDateString(
+        currentLang === "de" ? "de-DE" : "ru-RU"
+    );
+
+    let tbody = document.querySelector("#bpTable tbody");
+    let rows  = Array.from(tbody.rows);
+
+    let removed = false;
+
+    rows.forEach(r => {
+        if (r.cells[0].innerText === today) {
+            tbody.removeChild(r);
+            removed = true;
+        }
+    });
+
+    if (!removed) {
+        alert(P.todayEmpty);
+        return;
+    }
+
+    saveToLocal();
+    updateChart();
+}
+
+/* ------------------ Удалить всё ------------------ */
+function clearAll() {
+    if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
+
+    document.querySelector("#bpTable tbody").innerHTML = "";
+    localStorage.removeItem(getStorageKey());
+    updateChart();
+}
+
+/* ------------------ CSV ------------------ */
+function exportCSV() {
+    let rows = document.querySelectorAll("#bpTable tr");
+    let csv = [];
+
+    for (let row of rows) {
+        let cols = row.querySelectorAll("th, td");
+        let rowData = [];
+        cols.forEach(col => rowData.push(col.innerText));
+        csv.push(rowData.join(","));
+    }
+
+    let blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = currentLang === "de"
+        ? "blutdruck.csv"
+        : "davlenie.csv";
+
+    a.click();
+}
+
+/* ------------------ PDF ------------------ */
+function savePDF() {
+    window.print();
+}
+
+/* ------------------ График (фон) ------------------ */
+const bpBackground = {
+    id: 'bpBackground',
+    beforeDraw(chart) {
+        const {ctx, chartArea:{left, right}, scales:{y}} = chart;
+        ctx.fillStyle = 'rgba(120, 200, 120, 0.15)';  /* зелёная */
+        ctx.fillRect(left, y.getPixelForValue(80), right-left, y.getPixelForValue(0)-y.getPixelForValue(80));
+
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.18)';   /* жёлтая */
+        ctx.fillRect(left, y.getPixelForValue(90), right-left, y.getPixelForValue(80)-y.getPixelForValue(90));
+
+        ctx.fillStyle = 'rgba(255, 99, 132, 0.18)';  /* красная */
+        ctx.fillRect(left, y.getPixelForValue(200), right-left, y.getPixelForValue(90)-y.getPixelForValue(200));
+    }
+};
+
+/* ------------------ Chart.js ------------------ */
+let ctx = document.getElementById('bpChart').getContext('2d');
+
+let bpChart = new Chart(ctx, {
+    type: 'line',
+    plugins: [bpBackground],
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: "SYS",
+                data: [],
+                borderColor: '#ff4136',
+                backgroundColor: '#ff413640',
+                pointRadius: 3,
+                tension: 0.3
+            },
+            {
+                label: "DIA",
+                data: [],
+                borderColor: '#007bff',
+                backgroundColor: '#007bff40',
+                pointRadius: 3,
+                tension: 0.3
+            },
+            {
+                label: "Пульс",
+                data: [],
+                borderColor: '#ffdc00',
+                backgroundColor: '#ffdc0040',
+                pointRadius: 3,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                suggestedMin: 50,
+                suggestedMax: 200
+            }
+        }
+    }
+});
+
+/* ------------------ Обновить график ------------------ */
+function updateChart() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+
+    let labels = [];
+    let sys = [];
+    let dia = [];
+    let pul = [];
+
+    for (let r of rows) {
+        labels.push(r.cells[0].innerText + " " + r.cells[1].innerText);
+        sys.push(Number(r.cells[2].innerText));
+        dia.push(Number(r.cells[3].innerText));
+        pul.push(Number(r.cells[4].innerText));
+    }
+
+    bpChart.data.labels = labels;
+    bpChart.data.datasets[0].data = sys;
+    bpChart.data.datasets[1].data = dia;
+    bpChart.data.datasets[2].data = pul;
+
+    bpChart.data.datasets[0].label =
+        currentLang === "de" ? "Systolisch" : "Систолическое";
+    bpChart.data.datasets[1].label =
+        currentLang === "de" ? "Diastolisch" : "Диастолическое";
+    bpChart.data.datasets[2].label =
+        currentLang === "de" ? "Puls" : "Пульс";
+
+    bpChart.update();
+}
+
+/* ------------------ Старт ------------------ */
+applyLanguage();
+loadFromLocal();
+updateChart();
+
+</script>
+
+</body>
+</html>
