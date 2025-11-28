@@ -149,3 +149,163 @@ canvas {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+<div class="btn-row">
+    <button onclick="addEntry()">Eintrag hinzufügen</button>
+    <button onclick="deleteLast()">Letzten Eintrag löschen</button>
+    <button onclick="clearToday()">Heutige löschen</button>
+    <button onclick="clearAll()">Alles löschen</button>
+    <button onclick="exportCSV()">CSV exportieren</button>
+    <button onclick="window.print()">PDF speichern</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+/* Speicherung */
+function saveLocal() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+    let data = [];
+    for (let r of rows) {
+        data.push([
+            r.cells[0].innerText,
+            r.cells[1].innerText,
+            r.cells[2].innerText,
+            r.cells[3].innerText,
+            r.cells[4].innerText,
+            r.cells[5].innerText
+        ]);
+    }
+    localStorage.setItem("bp_data", JSON.stringify(data));
+}
+
+/* Laden */
+function loadLocal() {
+    let saved = localStorage.getItem("bp_data");
+    let body = document.querySelector("#bpTable tbody");
+    body.innerHTML = "";
+    if (!saved) return;
+
+    JSON.parse(saved).forEach(row => {
+        let r = body.insertRow();
+        row.forEach(v => r.insertCell().innerText = v);
+    });
+}
+
+/* Eintrag */
+function addEntry() {
+    let sys = prompt("Systolisch:");
+    if (!sys) return;
+    let dia = prompt("Diastolisch:");
+    if (!dia) return;
+    let pul = prompt("Puls:");
+    if (!pul) return;
+    let note = prompt("Notiz:") || "";
+
+    let now = new Date();
+    let date = now.toLocaleDateString("de-DE");
+    let time = now.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+
+    let r = document.querySelector("#bpTable tbody").insertRow();
+    r.insertCell().innerText = date;
+    r.insertCell().innerText = time;
+    r.insertCell().innerText = sys;
+    r.insertCell().innerText = dia;
+    r.insertCell().innerText = pul;
+    r.insertCell().innerText = note;
+
+    saveLocal();
+    updateChart();
+}
+
+/* Löschen letzte */
+function deleteLast() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+    if (rows.length === 0) return alert("Keine Einträge.");
+    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
+    saveLocal();
+    updateChart();
+}
+
+/* Löschen heutige */
+function clearToday() {
+    let today = new Date().toLocaleDateString("de-DE");
+    let tbody = document.querySelector("#bpTable tbody");
+    let rows = Array.from(tbody.rows);
+    let removed = false;
+
+    rows.forEach(r => {
+        if (r.cells[0].innerText === today) {
+            tbody.removeChild(r);
+            removed = true;
+        }
+    });
+
+    if (!removed) return alert("Heute keine Einträge.");
+    saveLocal();
+    updateChart();
+}
+
+/* Alles löschen */
+function clearAll() {
+    if (!confirm("Alles löschen?")) return;
+    document.querySelector("#bpTable tbody").innerHTML = "";
+    localStorage.removeItem("bp_data");
+    updateChart();
+}
+
+/* CSV */
+function exportCSV() {
+    let rows = document.querySelectorAll("#bpTable tr");
+    let csv = [];
+    rows.forEach(r => {
+        let cols = [...r.querySelectorAll("th,td")].map(c => c.innerText);
+        csv.push(cols.join(","));
+    });
+
+    let blob = new Blob([csv.join("\n")], {type:"text/csv"});
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "blutdruck.csv";
+    a.click();
+}
+
+/* Chart.js */
+let ctx = document.getElementById('bpChart').getContext('2d');
+let bpChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [
+        {label:"SYS",data:[],borderColor:'#ff4136',backgroundColor:'#ff413640',pointRadius:3,tension:0.3},
+        {label:"DIA",data:[],borderColor:'#007bff',backgroundColor:'#007bff40',pointRadius:3,tension:0.3},
+        {label:"PUL",data:[],borderColor:'#ffdc00',backgroundColor:'#ffdc0040',pointRadius:3,tension:0.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false}
+});
+
+/* Update Chart */
+function updateChart() {
+    let rows = document.querySelector("#bpTable tbody").rows;
+    let labels=[], sys=[], dia=[], pul=[];
+
+    for (let r of rows) {
+        labels.push(r.cells[0].innerText + " " + r.cells[1].innerText);
+        sys.push(Number(r.cells[2].innerText));
+        dia.push(Number(r.cells[3].innerText));
+        pul.push(Number(r.cells[4].innerText));
+    }
+
+    bpChart.data.labels = labels;
+    bpChart.data.datasets[0].data = sys;
+    bpChart.data.datasets[1].data = dia;
+    bpChart.data.datasets[2].data = pul;
+    bpChart.update();
+}
+
+/* Start */
+loadLocal();
+updateChart();
+</script>
+
+</body>
+</html>
