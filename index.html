@@ -1,8 +1,125 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blutdruck – Gästeseite</title>
+
+<style>
+body {
+    font-family: Arial;
+}
+
+/* Таблица */
+.table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    margin-top: 15px;
+}
+
+table {
+    width: 950px;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 17px;
+}
+
+th {
+    background-color: #e3eaf3;
+    color: #2a3b55;
+    padding: 10px;
+    border: 1px solid #c5d1df;
+}
+
+td {
+    padding: 10px;
+    border: 1px solid #c5d1df;
+    text-align: center;
+    background-color: #f8fafc;
+}
+
+tr:nth-child(even) td {
+    background-color: #f0f4f8;
+}
+
+/* Кнопки */
+button {
+    padding: 10px 18px;
+    background-color: #2a3b55;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 15px;
+    margin: 5px;
+}
+
+button:hover {
+    background-color: #1e2c40;
+}
+
+/* Блоки кнопок */
+.lang-row {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.menu-row {
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* PDF режим */
+@media print {
+    #langDE, #langRU, .menu-row, #headerExplain {
+        display: none !important;
+    }
+
+    table {
+        width: 100% !important;
+        font-size: 11px !important;
+    }
+
+    th, td {
+        padding: 3px !important;
+        border: 1px solid #777 !important;
+    }
+
+    body { margin: 0; padding: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="guestContent">
+
+<!-- ===== СТРОКА ЯЗЫКОВ ===== -->
+<div class="lang-row">
+    <button id="langDE">🇩🇪 Deutsch</button>
+    <button id="langRU">🇷🇺 Русский</button>
+</div>
+
+<!-- ===== ЗАГОЛОВОК ===== -->
+<div id="headerBlock"
+     style="text-align:center; margin-top:20px; color:#2a3b55; max-width:90%; margin-left:auto; margin-right:auto;">
+</div>
+
+<!-- ===== ВСЕ ОСТАЛЬНЫЕ КНОПКИ ===== -->
+<div class="menu-row" id="buttonRow"></div>
+
+<!-- ===== ТАБЛИЦА ===== -->
+<div class="table-wrapper">
+    <table id="bpTable">
+        <thead id="tableHead"></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
 /* ===== Тексты для DE и RU ===== */
 const LANG = {
     de: {
         headerTitle: "Blutdruck – Gästeseite",
-        explain: "Hier können Gäste ihr Blutdrucktagebuch führen.\nDie Daten werden nur lokal gespeichert.",
+        explain: "Hier können Gäste ihr Blutdrucktagebuch führen.\nDaten bleiben nur lokal gespeichert.",
         tableHead: `
             <tr>
                 <th>Datum</th>
@@ -20,25 +137,25 @@ const LANG = {
             <button onclick="addEntry()">Eintrag hinzufügen</button>
             <button onclick="deleteLast()">Letzten löschen</button>
             <button onclick="clearAll()">Alles löschen</button>
-            <button onclick="exportCSV()">CSV exportieren</button>
-            <button onclick="savePDF()">PDF speichern</button>
+            <button onclick="exportCSV()">CSV</button>
+            <button onclick="savePDF()">PDF</button>
         `,
         prompts: {
             first: "Vorname eingeben:",
             last: "Nachname eingeben:",
-            birth: "Geburtsdatum eingeben (z.B. 12.07.1965):",
+            birth: "Geburtsdatum eingeben:",
             sys: "Systolisch:",
             dia: "Diastolisch:",
             pulse: "Puls:",
             note: "Notiz:",
-            deleteConfirm: "Alle Einträge löschen?",
+            deleteConfirm: "Alles löschen?",
             deleteError: "Keine Einträge."
         }
     },
 
     ru: {
         headerTitle: "Дневник артериального давления",
-        explain: "Здесь каждый гость может вести свой дневник. Данные хранятся только на этом устройстве.",
+        explain: "Здесь можно вести дневник давления.\nДанные хранятся только на этом устройстве.",
         tableHead: `
             <tr>
                 <th>Дата</th>
@@ -53,21 +170,21 @@ const LANG = {
             <button onclick="setFirstName()">Имя</button>
             <button onclick="setLastName()">Фамилия</button>
             <button onclick="setBirthdate()">Дата рождения</button>
-            <button onclick="addEntry()">Добавить запись</button>
+            <button onclick="addEntry()">Добавить</button>
             <button onclick="deleteLast()">Удалить последнюю</button>
             <button onclick="clearAll()">Удалить всё</button>
-            <button onclick="exportCSV()">Экспорт CSV</button>
-            <button onclick="savePDF()">Сохранить PDF</button>
+            <button onclick="exportCSV()">CSV</button>
+            <button onclick="savePDF()">PDF</button>
         `,
         prompts: {
             first: "Введите имя:",
             last: "Введите фамилию:",
-            birth: "Введите дату рождения (например, 12.07.1965):",
+            birth: "Введите дату рождения:",
             sys: "Систолическое:",
             dia: "Диастолическое:",
             pulse: "Пульс:",
             note: "Примечание:",
-            deleteConfirm: "Удалить все записи?",
+            deleteConfirm: "Удалить всё?",
             deleteError: "Нет записей."
         }
     }
@@ -75,25 +192,25 @@ const LANG = {
 
 let currentLang = "de";
 
-/* ===== Ключи хранения ===== */
-function keyData() { return "bp_data_" + currentLang; }
+/* ===== КЛЮЧИ ХРАНЕНИЯ ===== */
+function keyData()  { return "bp_data_"  + currentLang; }
 function keyFirst() { return "bp_first_" + currentLang; }
 function keyLast()  { return "bp_last_"  + currentLang; }
 function keyBirth() { return "bp_birth_" + currentLang; }
 
-/* ===== Применить язык ===== */
+/* ===== ПРИМЕНИТЬ ЯЗЫК ===== */
 function applyLanguage() {
     const L = LANG[currentLang];
 
     const first = localStorage.getItem(keyFirst()) || "";
-    const last  = localStorage.getItem(keyLast())  || "";
+    const last  = localStorage.getItem(keyLast()) || "";
     const birth = localStorage.getItem(keyBirth()) || "";
 
     document.getElementById("headerBlock").innerHTML = `
         <h1>${L.headerTitle}</h1>
-        <div style="font-size:17px; margin-top:5px;">${first} ${last}</div>
-        <div style="font-size:14px; margin-top:3px;">${birth}</div>
-        <div id="headerExplain" style="white-space:pre-line; font-size:13px; margin-top:7px;">${L.explain}</div>
+        <div style="font-size:18px; margin-top:5px;">${first} ${last}</div>
+        <div style="font-size:14px;">${birth}</div>
+        <div id="headerExplain" style="font-size:13px; margin-top:7px; white-space:pre-line;">${L.explain}</div>
     `;
 
     document.getElementById("tableHead").innerHTML = L.tableHead;
@@ -102,33 +219,36 @@ function applyLanguage() {
     loadData();
 }
 
-/* ===== Кнопки языка ===== */
+/* ===== Переключение языка ===== */
 document.getElementById("langDE").onclick = () => { currentLang = "de"; applyLanguage(); };
 document.getElementById("langRU").onclick = () => { currentLang = "ru"; applyLanguage(); };
 
-/* ===== Имя, фамилия, дата рождения ===== */
+/* ===== Имя ▼ ===== */
 function setFirstName() {
     let v = prompt(LANG[currentLang].prompts.first);
     if (v !== null) localStorage.setItem(keyFirst(), v.trim());
     applyLanguage();
 }
 
+/* ===== Фамилия ▼ ===== */
 function setLastName() {
     let v = prompt(LANG[currentLang].prompts.last);
     if (v !== null) localStorage.setItem(keyLast(), v.trim());
     applyLanguage();
 }
 
+/* ===== Дата рождения ▼ ===== */
 function setBirthdate() {
     let v = prompt(LANG[currentLang].prompts.birth);
     if (v !== null) localStorage.setItem(keyBirth(), v.trim());
     applyLanguage();
 }
 
-/* ===== Таблица ===== */
+/* ===== Сохранение ===== */
 function saveData() {
-    let rows = document.querySelector("#bpTable tbody").rows;
     let arr = [];
+    const rows = document.querySelector("#bpTable tbody").rows;
+
     for (let r of rows) {
         arr.push([
             r.cells[0].innerText,
@@ -139,9 +259,11 @@ function saveData() {
             r.cells[5].innerText
         ]);
     }
+
     localStorage.setItem(keyData(), JSON.stringify(arr));
 }
 
+/* ===== Загрузка ===== */
 function loadData() {
     const saved = localStorage.getItem(keyData());
     const body = document.querySelector("#bpTable tbody");
@@ -150,12 +272,14 @@ function loadData() {
 
     JSON.parse(saved).forEach(row => {
         let r = body.insertRow();
-        row.forEach(v => r.insertCell().innerText = v);
+        row.forEach(cell => r.insertCell().innerText = cell);
     });
 }
 
+/* ===== Добавить запись ===== */
 function addEntry() {
     const P = LANG[currentLang].prompts;
+
     let sys = prompt(P.sys); if (!sys) return;
     let dia = prompt(P.dia); if (!dia) return;
     let pul = prompt(P.pulse); if (!pul) return;
@@ -163,10 +287,10 @@ function addEntry() {
 
     const now = new Date();
     const date = now.toLocaleDateString(currentLang === "de" ? "de-DE" : "ru-RU");
-    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU", {hour:"2-digit", minute:"2-digit"});
+    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU",
+        {hour:"2-digit", minute:"2-digit"});
 
-    let body = document.querySelector("#bpTable tbody");
-    let r = body.insertRow();
+    let r = document.querySelector("#bpTable tbody").insertRow();
     r.insertCell().innerText = date;
     r.insertCell().innerText = time;
     r.insertCell().innerText = sys;
@@ -177,13 +301,17 @@ function addEntry() {
     saveData();
 }
 
+/* ===== Удалить последнюю ===== */
 function deleteLast() {
+    const P = LANG[currentLang].prompts;
     let rows = document.querySelector("#bpTable tbody").rows;
-    if (rows.length === 0) return alert(LANG[currentLang].prompts.deleteError);
+    if (!rows.length) return alert(P.deleteError);
+
     document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
     saveData();
 }
 
+/* ===== Удалить всё ===== */
 function clearAll() {
     if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
     document.querySelector("#bpTable tbody").innerHTML = "";
@@ -192,14 +320,15 @@ function clearAll() {
 
 /* ===== CSV ===== */
 function exportCSV() {
-    let rows = document.querySelectorAll("#bpTable tr");
     let csv = [];
-    rows.forEach(r => {
+    document.querySelectorAll("#bpTable tr").forEach(r => {
         let cols = [...r.querySelectorAll("th, td")].map(c => c.innerText);
         csv.push(cols.join(","));
     });
+
     let blob = new Blob([csv.join("\n")], { type: "text/csv" });
     let url = URL.createObjectURL(blob);
+
     let a = document.createElement("a");
     a.href = url;
     a.download = currentLang === "de" ? "blutdruck.csv" : "davlenie.csv";
@@ -207,9 +336,7 @@ function exportCSV() {
 }
 
 /* ===== PDF ===== */
-function savePDF() {
-    window.print();
-}
+function savePDF() { window.print(); }
 
 /* ===== Запуск ===== */
 applyLanguage();
