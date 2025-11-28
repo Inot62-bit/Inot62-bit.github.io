@@ -1,154 +1,3 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blutdruck – Gästeseite</title>
-
-<style>
-.table-wrapper {
-    overflow-x: auto;
-    width: 100%;
-    -webkit-overflow-scrolling: touch;
-    margin-top: 15px;
-}
-
-table {
-    width: 950px;
-    border-collapse: collapse;
-    margin-top: 20px;
-    font-family: Arial;
-    font-size: 17px;
-}
-
-th {
-    background-color: #e3eaf3;
-    color: #2a3b55;
-    padding: 10px;
-    border: 1px solid #c5d1df;
-}
-
-td {
-    padding: 10px;
-    border: 1px solid #c5d1df;
-    text-align: center;
-    background-color: #f8fafc;
-    white-space: pre-line;
-}
-
-tr:nth-child(even) td {
-    background-color: #f0f4f8;
-}
-
-button {
-    margin-top: 10px;
-    padding: 10px 18px;
-    background-color: #2a3b55;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 15px;
-}
-
-button:hover {
-    background-color: #1e2c40;
-}
-
-.btn-row {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 15px;
-}
-
-.bp-chart-container {
-    width: 100%;
-    overflow-x: auto;
-    margin: 25px auto;
-}
-
-canvas {
-    width: 100% !important;
-    height: auto !important;
-}
-
-@media print {
-    header, .header, .site-header, .logo, nav, .navbar {
-        display: none !important;
-    }
-
-    h1, h2, h3 {
-        display: none !important;
-    }
-
-    #headerBlock h1 {
-        display: block !important;
-        font-size: 18px !important;
-    }
-
-    #guestNameLine,
-    #guestDobLine {
-        display: block !important;
-        font-size: 12px !important;
-    }
-
-    #bpChart,
-    #headerExplain {
-        display: none !important;
-    }
-
-    table {
-        width: 100% !important;
-        font-size: 11px !important;
-    }
-
-    th, td {
-        padding: 3px !important;
-        border: 1px solid #777 !important;
-    }
-
-    .btn-row,
-    #langDE, #langRU {
-        display: none !important;
-    }
-
-    body {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-}
-</style>
-</head>
-<body>
-
-<div id="guestContent">
-
-<div style="text-align:center; margin-top:15px; font-family:Arial;">
-    <button id="langDE" style="padding:8px 15px; margin-right:10px;">🇩🇪 Deutsch</button>
-    <button id="langRU" style="padding:8px 15px;">🇷🇺 Русский</button>
-</div>
-
-<div id="headerBlock"
-     style="text-align:center; margin-top:20px; font-family:Arial; color:#2a3b55; max-width:90%; margin-left:auto; margin-right:auto;">
-</div>
-
-<div class="bp-chart-container">
-    <canvas id="bpChart"></canvas>
-</div>
-
-<div class="table-wrapper">
-    <table id="bpTable">
-        <thead id="tableHead"></thead>
-        <tbody></tbody>
-    </table>
-</div>
-
-<div class="btn-row" id="buttonRow"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
 /* ===== Тексты для DE и RU ===== */
 const LANG = {
     de: {
@@ -226,7 +75,7 @@ const LANG = {
 
 let currentLang = "de";
 
-/* ===== Ключи хранения (DE и RU отдельно) ===== */
+/* ===== Ключи хранения ===== */
 function keyData() { return "bp_data_" + currentLang; }
 function keyFirst() { return "bp_first_" + currentLang; }
 function keyLast()  { return "bp_last_"  + currentLang; }
@@ -242,16 +91,9 @@ function applyLanguage() {
 
     document.getElementById("headerBlock").innerHTML = `
         <h1>${L.headerTitle}</h1>
-        <div style="font-size:17px; margin-top:5px;">
-            ${first} ${last}
-        </div>
-        <div style="font-size:14px; margin-top:3px;">
-            ${birth ? (currentLang === "de" ? "Geboren am: " : "Дата рождения: ") + birth : ""}
-        </div>
-        <div id="headerExplain"
-             style="white-space:pre-line; font-size:13px; margin-top:7px;">
-            ${L.explain}
-        </div>
+        <div style="font-size:17px; margin-top:5px;">${first} ${last}</div>
+        <div style="font-size:14px; margin-top:3px;">${birth}</div>
+        <div id="headerExplain" style="white-space:pre-line; font-size:13px; margin-top:7px;">${L.explain}</div>
     `;
 
     document.getElementById("tableHead").innerHTML = L.tableHead;
@@ -260,34 +102,33 @@ function applyLanguage() {
     loadData();
 }
 
-/* ===== Переключатели ===== */
+/* ===== Кнопки языка ===== */
 document.getElementById("langDE").onclick = () => { currentLang = "de"; applyLanguage(); };
 document.getElementById("langRU").onclick = () => { currentLang = "ru"; applyLanguage(); };
 
-/* ===== Имя, фамилия, дата ===== */
+/* ===== Имя, фамилия, дата рождения ===== */
 function setFirstName() {
-    const v = prompt(LANG[currentLang].prompts.first);
+    let v = prompt(LANG[currentLang].prompts.first);
     if (v !== null) localStorage.setItem(keyFirst(), v.trim());
     applyLanguage();
 }
 
 function setLastName() {
-    const v = prompt(LANG[currentLang].prompts.last);
+    let v = prompt(LANG[currentLang].prompts.last);
     if (v !== null) localStorage.setItem(keyLast(), v.trim());
     applyLanguage();
 }
 
 function setBirthdate() {
-    const v = prompt(LANG[currentLang].prompts.birth);
+    let v = prompt(LANG[currentLang].prompts.birth);
     if (v !== null) localStorage.setItem(keyBirth(), v.trim());
     applyLanguage();
 }
 
-/* ===== Сохранение таблицы ===== */
+/* ===== Таблица ===== */
 function saveData() {
-    const rows = document.querySelector("#bpTable tbody").rows;
+    let rows = document.querySelector("#bpTable tbody").rows;
     let arr = [];
-
     for (let r of rows) {
         arr.push([
             r.cells[0].innerText,
@@ -298,15 +139,12 @@ function saveData() {
             r.cells[5].innerText
         ]);
     }
-
     localStorage.setItem(keyData(), JSON.stringify(arr));
 }
 
-/* ===== Загрузка ===== */
 function loadData() {
     const saved = localStorage.getItem(keyData());
     const body = document.querySelector("#bpTable tbody");
-
     body.innerHTML = "";
     if (!saved) return;
 
@@ -316,10 +154,8 @@ function loadData() {
     });
 }
 
-/* ===== Добавить запись ===== */
 function addEntry() {
     const P = LANG[currentLang].prompts;
-
     let sys = prompt(P.sys); if (!sys) return;
     let dia = prompt(P.dia); if (!dia) return;
     let pul = prompt(P.pulse); if (!pul) return;
@@ -327,11 +163,9 @@ function addEntry() {
 
     const now = new Date();
     const date = now.toLocaleDateString(currentLang === "de" ? "de-DE" : "ru-RU");
-    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU",
-                                        {hour: "2-digit", minute: "2-digit"});
+    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU", {hour:"2-digit", minute:"2-digit"});
 
-    const body = document.querySelector("#bpTable tbody");
-
+    let body = document.querySelector("#bpTable tbody");
     let r = body.insertRow();
     r.insertCell().innerText = date;
     r.insertCell().innerText = time;
@@ -343,18 +177,13 @@ function addEntry() {
     saveData();
 }
 
-/* ===== Удалить последнюю ===== */
 function deleteLast() {
-    const P = LANG[currentLang].prompts;
-    const rows = document.querySelector("#bpTable tbody").rows;
-
-    if (!rows.length) return alert(P.deleteError);
-
+    let rows = document.querySelector("#bpTable tbody").rows;
+    if (rows.length === 0) return alert(LANG[currentLang].prompts.deleteError);
     document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
     saveData();
 }
 
-/* ===== Удалить всё ===== */
 function clearAll() {
     if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
     document.querySelector("#bpTable tbody").innerHTML = "";
@@ -365,15 +194,12 @@ function clearAll() {
 function exportCSV() {
     let rows = document.querySelectorAll("#bpTable tr");
     let csv = [];
-
     rows.forEach(r => {
         let cols = [...r.querySelectorAll("th, td")].map(c => c.innerText);
         csv.push(cols.join(","));
     });
-
     let blob = new Blob([csv.join("\n")], { type: "text/csv" });
     let url = URL.createObjectURL(blob);
-
     let a = document.createElement("a");
     a.href = url;
     a.download = currentLang === "de" ? "blutdruck.csv" : "davlenie.csv";
@@ -385,6 +211,10 @@ function savePDF() {
     window.print();
 }
 
-/* ===== Старт ===== */
+/* ===== Запуск ===== */
 applyLanguage();
 loadData();
+</script>
+
+</body>
+</html>
