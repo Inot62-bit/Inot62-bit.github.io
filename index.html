@@ -1,347 +1,208 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blutdruck – Gästeseite</title>
+<!-- ========================================================= -->
+<!-- =============== СОДЕРЖАНИЕ ГЛАВНОЙ СТРАНИЦЫ ============== -->
+<!-- ========================================================= -->
 
 <style>
-body {
-    font-family: Arial;
-}
-
-/* Таблица */
-.table-wrapper {
-    overflow-x: auto;
-    width: 100%;
-    margin-top: 15px;
-}
-
-table {
-    width: 950px;
-    border-collapse: collapse;
-    margin-top: 20px;
-    font-size: 17px;
-}
-
-th {
-    background-color: #e3eaf3;
-    color: #2a3b55;
-    padding: 10px;
-    border: 1px solid #c5d1df;
-}
-
-td {
-    padding: 10px;
-    border: 1px solid #c5d1df;
-    text-align: center;
-    background-color: #f8fafc;
-}
-
-tr:nth-child(even) td {
-    background-color: #f0f4f8;
-}
-
-/* Кнопки */
-button {
-    padding: 10px 18px;
-    background-color: #2a3b55;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 15px;
-    margin: 5px;
-}
-
-button:hover {
-    background-color: #1e2c40;
-}
-
-/* Блоки кнопок */
-.lang-row {
-    margin-top: 15px;
-    text-align: center;
-}
-
-.menu-row {
-    margin-top: 10px;
-    text-align: center;
-}
-
-/* PDF режим */
-@media print {
-    #langDE, #langRU, .menu-row, #headerExplain {
-        display: none !important;
-    }
-
-    table {
-        width: 100% !important;
-        font-size: 11px !important;
-    }
-
-    th, td {
-        padding: 3px !important;
-        border: 1px solid #777 !important;
-    }
-
-    body { margin: 0; padding: 0; }
-}
+  body {
+    margin-top: 0 !important;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
 </style>
-</head>
-<body>
 
-<div id="guestContent">
+<section
+  style="
+    padding: 28px;
+    background: #fafcff;
+    border-radius: 16px;
+    border: 1px solid #e4eaf3;
+    max-width: 900px;
+    margin: 20px auto 40px auto;
+    line-height: 1.6;
+    color: #1f2933;
+  "
+>
 
-<!-- ===== СТРОКА ЯЗЫКОВ ===== -->
-<div class="lang-row">
-    <button id="langDE">🇩🇪 Deutsch</button>
-    <button id="langRU">🇷🇺 Русский</button>
-</div>
+  <!-- Фото -->
+  <div style="width: 100%; max-width: 850px; margin: 0 auto 25px; text-align: center;">
+    <img
+      src="https://pink-camel-423425.hostingersite.com/wp-content/uploads/2025/11/Screenshot_20251122_155854_Samsung-Internet.jpg"
+      alt="Тони на прогулке"
+      style="width: 100%; border-radius: 18px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);"
+    />
+  </div>
 
-<!-- ===== ЗАГОЛОВОК ===== -->
-<div id="headerBlock"
-     style="text-align:center; margin-top:20px; color:#2a3b55; max-width:90%; margin-left:auto; margin-right:auto;">
-</div>
+  <h1 style="font-size: 28px; margin-bottom: 14px; font-weight: 700; color: #1a2b49;">
+    Добро пожаловать! Ваше здоровье и комфорт — в одном месте
+  </h1>
 
-<!-- ===== ВСЕ ОСТАЛЬНЫЕ КНОПКИ ===== -->
-<div class="menu-row" id="buttonRow"></div>
+  <p style="font-size: 16px; margin-bottom: 18px;">
+    Этот сайт создан как простое и понятное пространство, где каждый может следить за своим здоровьем,
+    питанием и ежедневными привычками. Здесь я делюсь личным опытом, полезными материалами и инструментами,
+    которые действительно помогают улучшить качество жизни.
+  </p>
 
-<!-- ===== ТАБЛИЦА ===== -->
-<div class="table-wrapper">
-    <table id="bpTable">
-        <thead id="tableHead"></thead>
-        <tbody></tbody>
-    </table>
-</div>
+  <h2
+    style="
+      font-size: 22px;
+      margin: 20px 0 12px;
+      color: #23406b;
+      border-left: 4px solid #3fa9f5;
+      padding-left: 10px;
+    "
+  >
+    ✨ Что вы найдёте на сайте
+  </h2>
 
-<script>
-/* ===== Тексты для DE и RU ===== */
-const LANG = {
-    de: {
-        headerTitle: "Blutdrucktabelle",
-        explain: "Hier können Gäste ihr Blutdrucktagebuch führen.\nDaten bleiben nur lokal gespeichert.",
-        tableHead: `
-            <tr>
-                <th>Datum</th>
-                <th>Uhrzeit</th>
-                <th>Systolisch</th>
-                <th>Diastolisch</th>
-                <th>Puls</th>
-                <th>Notiz</th>
-            </tr>
-        `,
-        buttons: `
-            <button onclick="setFirstName()">Vorname</button>
-            <button onclick="setLastName()">Nachname</button>
-            <button onclick="setBirthdate()">Geburtsdatum</button>
-            <button onclick="addEntry()">Eintrag hinzufügen</button>
-            <button onclick="deleteLast()">Letzten löschen</button>
-            <button onclick="clearAll()">Alles löschen</button>
-            <button onclick="exportCSV()">CSV</button>
-            <button onclick="savePDF()">PDF</button>
-        `,
-        prompts: {
-            first: "Vorname eingeben:",
-            last: "Nachname eingeben:",
-            birth: "Geburtsdatum eingeben:",
-            sys: "Systolisch:",
-            dia: "Diastolisch:",
-            pulse: "Puls:",
-            note: "Notiz:",
-            deleteConfirm: "Alles löschen?",
-            deleteError: "Keine Einträge."
-        }
-    },
+  <ul style="padding-left: 20px; margin-bottom: 20px; font-size: 16px;">
+    <li>калькулятор калорий;</li>
+    <li>готовые меню и рекомендации по питанию;</li>
+    <li>список низкоуглеводных продуктов;</li>
+    <li>статьи о похудении и здоровье после 50 лет;</li>
+    <li>
+      <a href="https://pink-camel-423425.hostingersite.com/%D0%BB%D0%B8%D1%87%D0%BD%D1%8B%D0%B9-%D0%B4%D0%BD%D0%B5%D0%B2%D0%BD%D0%B8%D0%BA-%D0%B4%D0%B0%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F/"
+         style="color:#1a2b49; font-weight:700; text-decoration:none;">
+         дневник артериального давления
+      </a>
+    </li>
+  </ul>
 
-    ru: {
-        headerTitle: "Дневник артериального давления",
-        explain: "Здесь можно вести дневник давления.\nДанные хранятся только на этом устройстве.",
-        tableHead: `
-            <tr>
-                <th>Дата</th>
-                <th>Время</th>
-                <th>Систолическое</th>
-                <th>Диастолическое</th>
-                <th>Пульс</th>
-                <th>Примечание</th>
-            </tr>
-        `,
-        buttons: `
-            <button onclick="setFirstName()">Имя</button>
-            <button onclick="setLastName()">Фамилия</button>
-            <button onclick="setBirthdate()">Дата рождения</button>
-            <button onclick="addEntry()">Добавить</button>
-            <button onclick="deleteLast()">Удалить последнюю</button>
-            <button onclick="clearAll()">Удалить всё</button>
-            <button onclick="exportCSV()">CSV</button>
-            <button onclick="savePDF()">PDF</button>
-        `,
-        prompts: {
-            first: "Введите имя:",
-            last: "Введите фамилию:",
-            birth: "Введите дату рождения:",
-            sys: "Систолическое:",
-            dia: "Диастолическое:",
-            pulse: "Пульс:",
-            note: "Примечание:",
-            deleteConfirm: "Удалить всё?",
-            deleteError: "Нет записей."
-        }
-    }
-};
+  <h2
+    style="
+      font-size: 22px;
+      margin: 20px 0 12px;
+      color: #23406b;
+      border-left: 4px solid #3fa9f5;
+      padding-left: 10px;
+    "
+  >
+    📊 Полезный инструмент — дневник давления
+  </h2>
 
-let currentLang = "de";
+  <div style="text-align: center; margin: 20px 0;">
+    <img
+      src="https://pink-camel-423425.hostingersite.com/wp-content/uploads/2025/11/file_0000000090a871f4b6a017a07fc55aad.png"
+      alt="Тонометр"
+      style="max-width: 260px; border-radius: 12px;"
+    />
+  </div>
 
-/* ===== КЛЮЧИ ХРАНЕНИЯ ===== */
-function keyData()  { return "bp_data_"  + currentLang; }
-function keyFirst() { return "bp_first_" + currentLang; }
-function keyLast()  { return "bp_last_"  + currentLang; }
-function keyBirth() { return "bp_birth_" + currentLang; }
+  <p style="font-size: 16px; margin-bottom: 18px;">
+    Регулярное измерение давления помогает вовремя заметить изменения,
+    понять, что улучшает самочувствие и держать здоровье под контролем.
+  </p>
 
-/* ===== ПРИМЕНИТЬ ЯЗЫК ===== */
-function applyLanguage() {
-    const L = LANG[currentLang];
+  <div
+    style="
+      background: #f3faff;
+      padding: 20px;
+      border-left: 5px solid #3fa9f5;
+      border-radius: 8px;
+    "
+  >
+    <h3 style="margin-top: 0; font-size: 20px; color: #1a2b49;">Как вести дневник давления</h3>
 
-    const first = localStorage.getItem(keyFirst()) || "";
-    const last  = localStorage.getItem(keyLast()) || "";
-    const birth = localStorage.getItem(keyBirth()) || "";
+    <ol style="margin-left: 18px; font-size: 16px;">
+      <li>Измеряйте давление в спокойном состоянии.</li>
+      <li>Записывайте SYS, DIA и пульс.</li>
+      <li>Отмечайте важные моменты: после еды, прогулки, перед сном.</li>
+      <li>Следите за динамикой, чтобы понимать своё состояние.</li>
+    </ol>
+  </div>
 
-    document.getElementById("headerBlock").innerHTML = `
-        <h1>${L.headerTitle}</h1>
-        <div style="font-size:18px; margin-top:5px;">${first} ${last}</div>
-        <div style="font-size:14px;">${birth}</div>
-        <div id="headerExplain" style="font-size:13px; margin-top:7px; white-space:pre-line;">${L.explain}</div>
-    `;
+  <h2
+    style="
+      font-size: 22px;
+      margin: 20px 0 12px;
+      color: #23406b;
+      border-left: 4px solid #3fa9f5;
+      padding-left: 10px;
+    "
+  >
+    🎯 Для чего я создал этот сайт
+  </h2>
 
-    document.getElementById("tableHead").innerHTML = L.tableHead;
-    document.getElementById("buttonRow").innerHTML = L.buttons;
+  <p style="font-size: 16px; margin-bottom: 18px;">
+    После 50 лет здоровье становится главным приоритетом. Я прошёл путь снижения веса,
+    улучшения питания и физической активности. Здесь я собрал инструменты, которые помогают упрощать
+    ежедневные решения и менять жизнь шаг за шагом.
+  </p>
 
-    loadData();
-}
+  <ul style="padding-left: 20px; margin-bottom: 20px; font-size: 16px;">
+    <li>контролировать питание;</li>
+    <li>вести дневник давления;</li>
+    <li>подбирать подходящие продукты;</li>
+    <li>получать мотивацию и поддержку;</li>
+    <li>менять образ жизни постепенно и уверенно.</li>
+  </ul>
 
-/* ===== Переключение языка ===== */
-document.getElementById("langDE").onclick = () => { currentLang = "de"; applyLanguage(); };
-document.getElementById("langRU").onclick = () => { currentLang = "ru"; applyLanguage(); };
+  <p style="font-size: 17px; font-weight: 700; color: #1a2b49; margin-top: 20px;">
+    Всё просто, понятно и всегда под рукой — на телефоне, планшете или компьютере.
+  </p>
 
-/* ===== Имя ▼ ===== */
-function setFirstName() {
-    let v = prompt(LANG[currentLang].prompts.first);
-    if (v !== null) localStorage.setItem(keyFirst(), v.trim());
-    applyLanguage();
-}
+  <!-- ===================== СОЦСЕТИ — НИЗ СТРАНИЦЫ ===================== -->
+  <div style="text-align:center; margin-top:40px;">
 
-/* ===== Фамилия ▼ ===== */
-function setLastName() {
-    let v = prompt(LANG[currentLang].prompts.last);
-    if (v !== null) localStorage.setItem(keyLast(), v.trim());
-    applyLanguage();
-}
+    <h3 style="font-size:22px; margin-bottom:18px;">Мои соцсети</h3>
 
-/* ===== Дата рождения ▼ ===== */
-function setBirthdate() {
-    let v = prompt(LANG[currentLang].prompts.birth);
-    if (v !== null) localStorage.setItem(keyBirth(), v.trim());
-    applyLanguage();
-}
+    <a
+      href="https://www.facebook.com/toni.wagner.752"
+      style="
+        display:inline-block;
+        background:#3b5998;
+        color:white;
+        padding:12px 20px;
+        margin:6px;
+        border-radius:10px;
+        text-decoration:none;
+        font-size:18px;
+      ">
+      👍 Facebook
+    </a>
 
-/* ===== Сохранение ===== */
-function saveData() {
-    let arr = [];
-    const rows = document.querySelector("#bpTable tbody").rows;
+    <a
+      href="https://www.instagram.com/inot0762?igsh=dTV1eXdvMWFwMHRo"
+      style="
+        display:inline-block;
+        background:#e1306c;
+        color:white;
+        padding:12px 20px;
+        margin:6px;
+        border-radius:10px;
+        text-decoration:none;
+        font-size:18px;
+      ">
+      📸 Instagram
+    </a>
 
-    for (let r of rows) {
-        arr.push([
-            r.cells[0].innerText,
-            r.cells[1].innerText,
-            r.cells[2].innerText,
-            r.cells[3].innerText,
-            r.cells[4].innerText,
-            r.cells[5].innerText
-        ]);
-    }
+  </div>
 
-    localStorage.setItem(keyData(), JSON.stringify(arr));
-}
+  <!-- ========== АВТО-ОБНОВЛЕНИЕ ДЛЯ GOOGLE ========== -->
+  <div id="google-update"
+       style="font-size:0; color:transparent; height:0; overflow:hidden;">
+    Обновлено: <span id="update-date"></span>
+  </div>
 
-/* ===== Загрузка ===== */
-function loadData() {
-    const saved = localStorage.getItem(keyData());
-    const body = document.querySelector("#bpTable tbody");
-    body.innerHTML = "";
-    if (!saved) return;
+  <!-- Статичный JSON-LD (WebView-friendly) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Главная — здоровье после 50"
+  }
+  </script>
 
-    JSON.parse(saved).forEach(row => {
-        let r = body.insertRow();
-        row.forEach(cell => r.insertCell().innerText = cell);
-    });
-}
+  <!-- Установка даты (совместимо с WebView) -->
+  <script>
+    (function(){
+      var d = new Date();
+      var day   = ('0' + d.getDate()).slice(-2);
+      var month = ('0' + (d.getMonth()+1)).slice(-2);
+      var year  = d.getFullYear();
+      var today = year + '-' + month + '-' + day;
 
-/* ===== Добавить запись ===== */
-function addEntry() {
-    const P = LANG[currentLang].prompts;
+      var el = document.getElementById("update-date");
+      if (el) el.textContent = today;
+    })();
+  </script>
 
-    let sys = prompt(P.sys); if (!sys) return;
-    let dia = prompt(P.dia); if (!dia) return;
-    let pul = prompt(P.pulse); if (!pul) return;
-    let note = prompt(P.note) || "";
-
-    const now = new Date();
-    const date = now.toLocaleDateString(currentLang === "de" ? "de-DE" : "ru-RU");
-    const time = now.toLocaleTimeString(currentLang === "de" ? "de-DE" : "ru-RU",
-        {hour:"2-digit", minute:"2-digit"});
-
-    let r = document.querySelector("#bpTable tbody").insertRow();
-    r.insertCell().innerText = date;
-    r.insertCell().innerText = time;
-    r.insertCell().innerText = sys;
-    r.insertCell().innerText = dia;
-    r.insertCell().innerText = pul;
-    r.insertCell().innerText = note;
-
-    saveData();
-}
-
-/* ===== Удалить последнюю ===== */
-function deleteLast() {
-    const P = LANG[currentLang].prompts;
-    let rows = document.querySelector("#bpTable tbody").rows;
-    if (!rows.length) return alert(P.deleteError);
-
-    document.querySelector("#bpTable tbody").deleteRow(rows.length - 1);
-    saveData();
-}
-
-/* ===== Удалить всё ===== */
-function clearAll() {
-    if (!confirm(LANG[currentLang].prompts.deleteConfirm)) return;
-    document.querySelector("#bpTable tbody").innerHTML = "";
-    localStorage.removeItem(keyData());
-}
-
-/* ===== CSV ===== */
-function exportCSV() {
-    let csv = [];
-    document.querySelectorAll("#bpTable tr").forEach(r => {
-        let cols = [...r.querySelectorAll("th, td")].map(c => c.innerText);
-        csv.push(cols.join(","));
-    });
-
-    let blob = new Blob([csv.join("\n")], { type: "text/csv" });
-    let url = URL.createObjectURL(blob);
-
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = currentLang === "de" ? "blutdruck.csv" : "davlenie.csv";
-    a.click();
-}
-
-/* ===== PDF ===== */
-function savePDF() { window.print(); }
-
-/* ===== Запуск ===== */
-applyLanguage();
-loadData();
-</script>
-
-</body>
-</html>
+</section>
