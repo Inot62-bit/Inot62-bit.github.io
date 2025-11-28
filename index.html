@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Добро пожаловать</title>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #1a2b49, #3b6ea5);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        text-align: center;
+        color: #fff;
+    }
+
+    h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin-bottom: 25px;
+    }
+
+    .enter-btn {
+        background: #ffffff;
+        color: #1a2b49;
+        padding: 16px 36px;
+        font-size: 20px;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        transition: 0.25s;
+    }
+
+    .enter-btn:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 26px rgba(0,0,0,0.32);
+    }
+
+    .enter-btn:active {
+        transform: translateY(0);
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Добро пожаловать, Тони</h1>
+    <button class="enter-btn" onclick="window.location='menu.html'">
+        Войти
+    </button>
+</div>
+
+</body>
+</html>
